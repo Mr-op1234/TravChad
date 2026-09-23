@@ -2079,19 +2079,6 @@ export default function TripDetailPage() {
                     onChange={(e) => setNewEvent({ ...newEvent, coverImage: e.target.value })}
                     className="flex-1 p-2.5 border border-[#dfe6ee] rounded-[9px] text-[13.5px] text-[#1e293b] outline-none focus:border-[#2563eb]"
                   />
-                  {newEvent.coverImage && (
-                    <button
-                      type="button"
-                      onClick={() => setNewEvent({ ...newEvent, coverImage: "" })}
-                      className="px-3 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[9px] text-[13px] font-semibold flex items-center gap-1 transition shrink-0"
-                      title="Clear cover image"
-                    >
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M18 6L6 18M6 6l12 12" />
-                      </svg>
-                      Clear
-                    </button>
-                  )}
                   <button
                     type="button"
                     onClick={() => coverFileInputRef.current?.click()}
@@ -2113,27 +2100,15 @@ export default function TripDetailPage() {
                   />
                 </div>
                 {newEvent.coverImage && (
-                  <div className="flex items-center gap-3 mt-1.5">
-                    <div className="relative w-20 h-14 rounded-lg overflow-hidden border border-[#cbd5e1] group">
-                      <img src={newEvent.coverImage} alt="Cover preview" className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => setNewEvent({ ...newEvent, coverImage: "" })}
-                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] font-bold shadow hover:bg-red-700 transition cursor-pointer"
-                        title="Remove cover photo"
-                      >
-                        ✕
-                      </button>
-                    </div>
+                  <div className="relative w-20 h-14 rounded-lg overflow-hidden border border-[#cbd5e1] mt-1.5">
+                    <img src={newEvent.coverImage} alt="Cover preview" className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => setNewEvent({ ...newEvent, coverImage: "" })}
-                      className="text-[12px] text-red-600 hover:text-red-700 font-medium hover:underline flex items-center gap-1"
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] font-bold shadow hover:bg-red-700 transition cursor-pointer"
+                      title="Remove cover photo"
                     >
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      </svg>
-                      Remove Cover
+                      ✕
                     </button>
                   </div>
                 )}
@@ -2855,19 +2830,6 @@ export default function TripDetailPage() {
                     onChange={(e) => setEditEventData({ ...editEventData, coverImage: e.target.value })}
                     className="flex-1 p-2.5 border border-[#dfe6ee] rounded-[9px] text-[13.5px] text-[#1e293b] outline-none focus:border-[#2563eb]"
                   />
-                  {editEventData.coverImage && (
-                    <button
-                      type="button"
-                      onClick={() => setEditEventData({ ...editEventData, coverImage: "" })}
-                      className="px-3 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[9px] text-[13px] font-semibold flex items-center gap-1 transition shrink-0"
-                      title="Clear cover image"
-                    >
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M18 6L6 18M6 6l12 12" />
-                      </svg>
-                      Clear
-                    </button>
-                  )}
                   <button
                     type="button"
                     onClick={() => editCoverFileInputRef.current?.click()}
@@ -2889,27 +2851,15 @@ export default function TripDetailPage() {
                   />
                 </div>
                 {editEventData.coverImage && (
-                  <div className="flex items-center gap-3 mt-1.5">
-                    <div className="relative w-20 h-14 rounded-lg overflow-hidden border border-[#cbd5e1] group">
-                      <img src={editEventData.coverImage} alt="Cover preview" className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => setEditEventData({ ...editEventData, coverImage: "" })}
-                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] font-bold shadow hover:bg-red-700 transition cursor-pointer"
-                        title="Remove cover photo"
-                      >
-                        ✕
-                      </button>
-                    </div>
+                  <div className="relative w-20 h-14 rounded-lg overflow-hidden border border-[#cbd5e1] mt-1.5">
+                    <img src={editEventData.coverImage} alt="Cover preview" className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => setEditEventData({ ...editEventData, coverImage: "" })}
-                      className="text-[12px] text-red-600 hover:text-red-700 font-medium hover:underline flex items-center gap-1"
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] font-bold shadow hover:bg-red-700 transition cursor-pointer"
+                      title="Remove cover photo"
                     >
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      </svg>
-                      Remove Cover
+                      ✕
                     </button>
                   </div>
                 )}
