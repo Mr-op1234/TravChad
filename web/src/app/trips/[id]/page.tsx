@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { TripData, EventItem, TripDocument, getStoredTrips, saveStoredTrips } from "@/lib/tripsData";
 import { compressImageFile, compressDataUrl } from "@/lib/imageUtils";
 import RichTextEditor from "@/components/RichTextEditor";
+import DatePickerInput, { toDDMMYYYY } from "@/components/DatePickerInput";
 
 const PRESET_BANNERS = [
   { name: "Kyoto Pagoda", url: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=2000&q=85" },
@@ -133,7 +134,7 @@ export default function TripDetailPage() {
       setNewEvent((prev) => ({
         ...prev,
         title: `Day ${(found.events[found.events.length - 1]?.dayNumber || 0) + 1} – `,
-        date: found.endDate,
+        date: toDDMMYYYY(found.endDate),
       }));
     }
   }, [tripId]);
@@ -348,7 +349,7 @@ export default function TripDetailPage() {
     const nextDay = nextDayNumber + 1;
     setNewEvent({
       title: `Day ${nextDay} – `,
-      date: currentTrip.endDate,
+      date: toDDMMYYYY(currentTrip.endDate),
       startTime: "09:00",
       endTime: "15:00",
       calculatedDuration: "~ 6 hrs",
@@ -442,7 +443,7 @@ export default function TripDetailPage() {
     setEditEventData({
       id: evt.id,
       title: evt.title,
-      date: evt.date,
+      date: toDDMMYYYY(evt.date),
       startTime: "09:00",
       endTime: "15:00",
       calculatedDuration: evt.duration || "~ 4 hrs",
@@ -987,9 +988,9 @@ export default function TripDetailPage() {
                     <line x1="16" y1="2.5" x2="16" y2="6.5" />
                     <line x1="8" y1="2.5" x2="8" y2="6.5" />
                   </svg>
-                  <span>{currentTrip.startDate}</span>
+                  <span>{toDDMMYYYY(currentTrip.startDate)}</span>
                   <span className="text-white/60">→</span>
-                  <span>{currentTrip.endDate}</span>
+                  <span>{toDDMMYYYY(currentTrip.endDate)}</span>
                 </div>
               </div>
 
@@ -1157,7 +1158,7 @@ export default function TripDetailPage() {
                         </h3>
 
                         <div className="mt-1 flex items-center flex-wrap gap-x-3 gap-y-1 text-[13px] sm:text-[13.5px] text-[#64748b]">
-                          <span className="font-medium text-[#475569]">{evt.date}</span>
+                          <span className="font-medium text-[#475569]">{toDDMMYYYY(evt.date)}</span>
                           <span className="text-[#cbd5e1]">•</span>
                           <span>{evt.duration}</span>
                           <span className="text-[#cbd5e1]">•</span>
@@ -2061,14 +2062,13 @@ export default function TripDetailPage() {
                 </div>
                 <div>
                   <label className="block text-[12.5px] font-semibold text-[#334155] mb-1">
-                    Date
+                    Date <span className="font-normal text-[#94a3b8]">(DD-MM-YYYY)</span>
                   </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Apr 15, 2025"
+                  <DatePickerInput
                     value={newEvent.date}
-                    onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-                    className="w-full p-2.5 border border-[#dfe6ee] rounded-[9px] text-[13.5px] text-[#1e293b] outline-none focus:border-[#2563eb]"
+                    onChange={(date) => setNewEvent({ ...newEvent, date })}
+                    placeholder="DD-MM-YYYY"
+                    className="p-2.5 border border-[#dfe6ee] rounded-[9px] text-[13.5px] text-[#1e293b] outline-none focus:border-[#2563eb]"
                   />
                 </div>
               </div>
@@ -2714,13 +2714,13 @@ export default function TripDetailPage() {
                 </div>
                 <div>
                   <label className="block text-[12.5px] font-semibold text-[#334155] mb-1">
-                    Date
+                    Date <span className="font-normal text-[#94a3b8]">(DD-MM-YYYY)</span>
                   </label>
-                  <input
-                    type="text"
+                  <DatePickerInput
                     value={editEventData.date}
-                    onChange={(e) => setEditEventData({ ...editEventData, date: e.target.value })}
-                    className="w-full p-2.5 border border-[#dfe6ee] rounded-[9px] text-[13.5px] text-[#1e293b] outline-none focus:border-[#2563eb]"
+                    onChange={(date) => setEditEventData({ ...editEventData, date })}
+                    placeholder="DD-MM-YYYY"
+                    className="p-2.5 border border-[#dfe6ee] rounded-[9px] text-[13.5px] text-[#1e293b] outline-none focus:border-[#2563eb]"
                   />
                 </div>
               </div>

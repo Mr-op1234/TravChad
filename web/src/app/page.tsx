@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { TripData, INITIAL_TRIPS, getStoredTrips, saveStoredTrips } from "@/lib/tripsData";
 import { compressImageFile, compressDataUrl } from "@/lib/imageUtils";
+import DatePickerInput, { toDDMMYYYY } from "@/components/DatePickerInput";
 
 type Trip = TripData;
 
@@ -18,10 +19,25 @@ const FALLBACK_IMGS = [
   "https://images.unsplash.com/photo-1539650116574-75c0c6d73f6e?auto=format&fit=crop&w=900&q=80",
 ];
 
-function formatDate(iso: string) {
-  if (!iso) return "";
-  const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString("en-US", {
+function parseDateStrToTime(str: string): number {
+  if (!str) return 0;
+  const trimmed = str.trim();
+  if (/^\d{2}-\d{2}-\d{4}$/.test(trimmed)) {
+    const [d, m, y] = trimmed.split("-");
+    return new Date(`${y}-${m}-${d}T00:00:00`).getTime();
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return new Date(`${trimmed}T00:00:00`).getTime();
+  }
+  const d = new Date(trimmed);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+}
+
+function formatDate(str: string) {
+  if (!str) return "";
+  const t = parseDateStrToTime(str);
+  if (!t || isNaN(t)) return str;
+  return new Date(t).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -145,8 +161,8 @@ export default function Dashboard() {
     setImageInputMode("upload");
     setFormData({
       name: trip.name,
-      startDate: trip.startDate,
-      endDate: trip.endDate,
+      startDate: toDDMMYYYY(trip.startDate),
+      endDate: toDDMMYYYY(trip.endDate),
       status: trip.status,
       image: trip.heroImage || trip.image || "",
       description: trip.description,
@@ -167,16 +183,15 @@ export default function Dashboard() {
     e.preventDefault();
     if (!formData.name || !formData.startDate || !formData.endDate) return;
 
-    if (formData.endDate < formData.startDate) {
+    const startMs = parseDateStrToTime(formData.startDate);
+    const endMs = parseDateStrToTime(formData.endDate);
+
+    if (endMs < startMs) {
       showToast("End date must be after the start date");
       return;
     }
 
-    const days =
-      Math.round(
-        (new Date(formData.endDate).getTime() - new Date(formData.startDate).getTime()) /
-          86400000
-      ) + 1;
+    const days = Math.max(1, Math.round((endMs - startMs) / 86400000) + 1);
 
     let img = formData.image.trim();
     if (img) {
@@ -1193,30 +1208,30 @@ export default function Dashboard() {
                 <div className="grid grid-cols-2 gap-3.5 mb-4">
                   <div>
                     <label className="block text-[13px] font-semibold text-[#334155] mb-1.5">
-                      Start date
+                      Start date <span className="font-normal text-[#94a3b8]">(DD-MM-YYYY)</span>
                     </label>
-                    <input
-                      type="date"
+                    <DatePickerInput
                       required
                       value={formData.startDate}
-                      onChange={(e) =>
-                        setFormData({ ...formData, startDate: e.target.value })
+                      onChange={(val) =>
+                        setFormData({ ...formData, startDate: val })
                       }
-                      className="w-full p-[10px_12px] border border-[#dfe6ee] rounded-[9px] text-[14px] text-[#1e293b] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.13)] transition"
+                      placeholder="DD-MM-YYYY"
+                      className="p-[10px_12px] border border-[#dfe6ee] rounded-[9px] text-[14px] text-[#1e293b] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.13)] transition"
                     />
                   </div>
                   <div>
                     <label className="block text-[13px] font-semibold text-[#334155] mb-1.5">
-                      End date
+                      End date <span className="font-normal text-[#94a3b8]">(DD-MM-YYYY)</span>
                     </label>
-                    <input
-                      type="date"
+                    <DatePickerInput
                       required
                       value={formData.endDate}
-                      onChange={(e) =>
-                        setFormData({ ...formData, endDate: e.target.value })
+                      onChange={(val) =>
+                        setFormData({ ...formData, endDate: val })
                       }
-                      className="w-full p-[10px_12px] border border-[#dfe6ee] rounded-[9px] text-[14px] text-[#1e293b] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.13)] transition"
+                      placeholder="DD-MM-YYYY"
+                      className="p-[10px_12px] border border-[#dfe6ee] rounded-[9px] text-[14px] text-[#1e293b] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.13)] transition"
                     />
                   </div>
                 </div>
