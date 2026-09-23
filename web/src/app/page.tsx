@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { TripData, INITIAL_TRIPS, getStoredTrips, saveStoredTrips } from "@/lib/tripsData";
+import { compressImageFile, compressDataUrl } from "@/lib/imageUtils";
 
 type Trip = TripData;
 
@@ -60,6 +61,20 @@ export default function Dashboard() {
     image: "",
     description: "",
   });
+  const [imageInputMode, setImageInputMode] = useState<"upload" | "url">("upload");
+  const [tripImageDragActive, setTripImageDragActive] = useState(false);
+  const tripImageFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleTripImageFile = async (file: File) => {
+    try {
+      const compressed = await compressImageFile(file, 1600, 1000, 0.78);
+      setFormData((prev) => ({ ...prev, image: compressed }));
+      showToast("Image selected & compressed");
+    } catch (err) {
+      console.error("Failed to process trip image:", err);
+      showToast("Failed to process image");
+    }
+  };
 
   // Toast
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -113,6 +128,7 @@ export default function Dashboard() {
 
   const openAddForm = () => {
     setEditingTrip(null);
+    setImageInputMode("upload");
     setFormData({
       name: "",
       startDate: "",
@@ -126,6 +142,7 @@ export default function Dashboard() {
 
   const openEditForm = (trip: Trip) => {
     setEditingTrip(trip);
+    setImageInputMode("upload");
     setFormData({
       name: trip.name,
       startDate: trip.startDate,
@@ -146,7 +163,7 @@ export default function Dashboard() {
     showToast("Trip deleted");
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.startDate || !formData.endDate) return;
 
@@ -161,9 +178,16 @@ export default function Dashboard() {
           86400000
       ) + 1;
 
-    const img =
-      formData.image.trim() ||
-      FALLBACK_IMGS[Math.floor(Math.random() * FALLBACK_IMGS.length)];
+    let img = formData.image.trim();
+    if (img) {
+      try {
+        img = await compressDataUrl(img, 1600, 1000, 0.78);
+      } catch {
+        // use img as is
+      }
+    } else {
+      img = FALLBACK_IMGS[Math.floor(Math.random() * FALLBACK_IMGS.length)];
+    }
 
     const desc =
       formData.description.trim() || "A brand-new adventure waiting to happen.";
@@ -179,6 +203,7 @@ export default function Dashboard() {
                 endDate: formData.endDate,
                 status: formData.status,
                 image: img,
+                heroImage: img,
                 description: desc,
                 days,
               }
@@ -1196,39 +1221,147 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3.5 mb-4">
-                  <div>
-                    <label className="block text-[13px] font-semibold text-[#334155] mb-1.5">
-                      Status
+                <div className="mb-4">
+                  <label className="block text-[13px] font-semibold text-[#334155] mb-1.5">
+                    Status
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        status: e.target.value as "upcoming" | "completed",
+                      })
+                    }
+                    className="w-full p-[10px_12px] border border-[#dfe6ee] rounded-[9px] text-[14px] text-[#1e293b] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.13)] transition"
+                  >
+                    <option value="upcoming">Upcoming</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[13px] font-semibold text-[#334155]">
+                      Cover Image <span className="font-normal text-[#94a3b8]">(optional)</span>
                     </label>
-                    <select
-                      value={formData.status}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          status: e.target.value as "upcoming" | "completed",
-                        })
-                      }
-                      className="w-full p-[10px_12px] border border-[#dfe6ee] rounded-[9px] text-[14px] text-[#1e293b] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.13)] transition"
-                    >
-                      <option value="upcoming">Upcoming</option>
-                      <option value="completed">Completed</option>
-                    </select>
+                    <div className="flex bg-[#f1f5f9] p-0.5 rounded-[8px] text-[12px] font-medium border border-[#e2e8f0]">
+                      <button
+                        type="button"
+                        onClick={() => setImageInputMode("upload")}
+                        className={`px-3 py-1 rounded-[6px] transition ${
+                          imageInputMode === "upload"
+                            ? "bg-white text-[#2563eb] shadow-sm font-semibold"
+                            : "text-[#64748b] hover:text-[#1e293b]"
+                        }`}
+                      >
+                        Upload from Device
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setImageInputMode("url")}
+                        className={`px-3 py-1 rounded-[6px] transition ${
+                          imageInputMode === "url"
+                            ? "bg-white text-[#2563eb] shadow-sm font-semibold"
+                            : "text-[#64748b] hover:text-[#1e293b]"
+                        }`}
+                      >
+                        Image URL
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-[13px] font-semibold text-[#334155] mb-1.5">
-                      Image URL <em className="font-normal text-[#94a3b8]">(optional)</em>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Leave empty for random"
-                      value={formData.image}
-                      onChange={(e) =>
-                        setFormData({ ...formData, image: e.target.value })
-                      }
-                      className="w-full p-[10px_12px] border border-[#dfe6ee] rounded-[9px] text-[14px] text-[#1e293b] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.13)] transition"
-                    />
-                  </div>
+
+                  {imageInputMode === "upload" ? (
+                    <div>
+                      <input
+                        ref={tripImageFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleTripImageFile(file);
+                          e.target.value = "";
+                        }}
+                      />
+                      <div
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setTripImageDragActive(true);
+                        }}
+                        onDragLeave={() => setTripImageDragActive(false)}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setTripImageDragActive(false);
+                          const file = e.dataTransfer.files?.[0];
+                          if (file) handleTripImageFile(file);
+                        }}
+                        onClick={() => tripImageFileInputRef.current?.click()}
+                        className={`w-full py-4 px-4 border-2 border-dashed rounded-[10px] flex flex-col items-center justify-center text-center cursor-pointer transition ${
+                          tripImageDragActive
+                            ? "border-[#2563eb] bg-[#eff6ff]"
+                            : "border-[#dfe6ee] bg-[#f8fafc] hover:border-[#2563eb] hover:bg-[#f0f7ff]"
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-[#eff6ff] text-[#2563eb] grid place-items-center mb-1">
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                          </svg>
+                        </div>
+                        <span className="text-[13px] font-semibold text-[#1e293b]">
+                          Click to browse device or drag & drop image
+                        </span>
+                        <span className="text-[11.5px] text-[#64748b] mt-0.5">
+                          PNG, JPG, WebP · automatically optimized
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="Paste image link (e.g. Unsplash, Pexels, or hosted URL)"
+                        value={formData.image}
+                        onChange={(e) =>
+                          setFormData({ ...formData, image: e.target.value })
+                        }
+                        className="w-full p-[10px_12px] border border-[#dfe6ee] rounded-[9px] text-[14px] text-[#1e293b] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.13)] transition"
+                      />
+                    </div>
+                  )}
+
+                  {/* Thumbnail Preview */}
+                  {formData.image && (
+                    <div className="relative mt-2.5 rounded-[10px] overflow-hidden border border-[#dfe6ee] h-28 bg-[#f8fafc] group">
+                      <img
+                        src={formData.image}
+                        alt="Trip Cover Preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = "none";
+                        }}
+                      />
+                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-[2px] text-white text-[11px] font-semibold">
+                        Preview
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFormData({ ...formData, image: "" });
+                        }}
+                        className="absolute top-2 right-2 bg-red-600/85 hover:bg-red-600 text-white rounded-full p-1 transition shadow-sm"
+                        title="Remove image"
+                      >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-4">
