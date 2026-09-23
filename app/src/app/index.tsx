@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   ImageBackground,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -22,27 +23,51 @@ import {
   Heart,
   User,
   X,
+  Ticket,
 } from 'lucide-react-native';
 
 import { PhoneViewWrapper } from '@/components/PhoneViewWrapper';
 import { TripCard } from '@/components/TripCard';
-import { AddTripModal } from '@/components/AddTripModal';
-import { TripDetailModal } from '@/components/TripDetailModal';
-import { INITIAL_MOBILE_TRIPS, MobileTrip } from '@/data/tripsData';
+import { ImportTripModal } from '@/components/ImportTripModal';
+import { TripDetailView } from '@/components/TripDetailView';
+import { MobileTrip, INITIAL_MOBILE_TRIPS } from '@/data/tripsData';
+import { loadStoredMobileTrips, saveStoredMobileTrips } from '@/services/api';
 
 type FilterType = 'all' | 'upcoming' | 'completed' | 'saved';
 type BottomTabType = 'home' | 'explore' | 'saved' | 'profile';
 
+const DEMO_QUICK_CODES = ['TC-JAPAN', 'TC-ITALY', 'TC-NEWZEALAND', 'TC-BALI'];
+
 export default function HomeScreen() {
   const [trips, setTrips] = useState<MobileTrip[]>(INITIAL_MOBILE_TRIPS);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [activeBottomTab, setActiveBottomTab] = useState<BottomTabType>('home');
 
-  // Modals state
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  // Modals & Navigation state
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<MobileTrip | null>(null);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  // Load persisted trips from AsyncStorage on mount
+  useEffect(() => {
+    let isMounted = true;
+    loadStoredMobileTrips()
+      .then((stored) => {
+        if (isMounted) {
+          if (stored && Array.isArray(stored)) {
+            setTrips(stored);
+          }
+          setIsLoaded(true);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setIsLoaded(true);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Filtered trips computation
   const filteredTrips = useMemo(() => {
@@ -55,10 +80,11 @@ export default function HomeScreen() {
       // Search query filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const matchesName = trip.name.toLowerCase().includes(q);
-        const matchesLoc = trip.locations.toLowerCase().includes(q);
-        const matchesDesc = trip.description.toLowerCase().includes(q);
-        return matchesName || matchesLoc || matchesDesc;
+        const matchesName = (trip.name || '').toLowerCase().includes(q);
+        const matchesLoc = (trip.locations || '').toLowerCase().includes(q);
+        const matchesDesc = (trip.description || '').toLowerCase().includes(q);
+        const matchesCode = (trip.tripCode || '').toLowerCase().includes(q);
+        return matchesName || matchesLoc || matchesDesc || matchesCode;
       }
 
       return true;
@@ -66,45 +92,63 @@ export default function HomeScreen() {
   }, [trips, activeFilter, searchQuery]);
 
   // Trip operations
-  const handleAddTrip = (newTrip: MobileTrip) => {
-    setTrips((prev) => [newTrip, ...prev]);
+  const handleTripImported = (imported: MobileTrip) => {
+    setTrips((prev) => {
+      // Deduplicate by id or tripCode
+      const filtered = prev.filter(
+        (t) => t.id !== imported.id && t.tripCode !== imported.tripCode
+      );
+      const updated = [imported, ...filtered];
+      saveStoredMobileTrips(updated);
+      return updated;
+    });
+    // Automatically open the imported trip in detail view
+    setSelectedTrip(imported);
   };
 
   const handleToggleSave = (id: string) => {
-    setTrips((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, isSaved: !t.isSaved } : t))
-    );
+    setTrips((prev) => {
+      const updated = prev.map((t) => (t.id === id ? { ...t, isSaved: !t.isSaved } : t));
+      saveStoredMobileTrips(updated);
+      return updated;
+    });
     if (selectedTrip && selectedTrip.id === id) {
       setSelectedTrip((prev) => (prev ? { ...prev, isSaved: !prev.isSaved } : null));
     }
   };
 
   const handleDeleteTrip = (id: string) => {
-    setTrips((prev) => prev.filter((t) => t.id !== id));
+    setTrips((prev) => {
+      const updated = prev.filter((t) => t.id !== id);
+      saveStoredMobileTrips(updated);
+      return updated;
+    });
+    if (selectedTrip && selectedTrip.id === id) {
+      setSelectedTrip(null);
+    }
   };
 
   const handleCardPress = (trip: MobileTrip) => {
     setSelectedTrip(trip);
-    setIsDetailModalOpen(true);
   };
 
   const handleCardOptions = (trip: MobileTrip) => {
     if (Platform.OS === 'web') {
-      const confirmDelete = window.confirm(`Delete trip "${trip.name}"?`);
+      const confirmDelete = window.confirm(`Remove trip "${trip.name}" from your app?`);
       if (confirmDelete) {
         handleDeleteTrip(trip.id);
       }
     } else {
       Alert.alert(
         trip.name,
-        'Choose an action for this trip',
+        `Trip Code: ${trip.tripCode || 'N/A'}\nStatus: ${trip.status}`,
         [
           {
             text: trip.isSaved ? 'Remove from Saved' : 'Save to Favorites',
             onPress: () => handleToggleSave(trip.id),
           },
           {
-            text: 'Delete Trip',
+            text: 'Delete from App',
             style: 'destructive',
             onPress: () => handleDeleteTrip(trip.id),
           },
@@ -123,6 +167,19 @@ export default function HomeScreen() {
       setActiveFilter('all');
     }
   };
+
+  // If a trip is selected, show the full read-only traveller detail screen
+  if (selectedTrip) {
+    return (
+      <PhoneViewWrapper>
+        <TripDetailView
+          trip={selectedTrip}
+          onBack={() => setSelectedTrip(null)}
+          onDeleteTrip={handleDeleteTrip}
+        />
+      </PhoneViewWrapper>
+    );
+  }
 
   return (
     <PhoneViewWrapper>
@@ -157,10 +214,11 @@ export default function HomeScreen() {
                   <TouchableOpacity
                     style={styles.bellButton}
                     onPress={() => {
+                      const msg = 'Notifications: Your traveller itinerary sync is active.';
                       if (Platform.OS === 'web') {
-                        window.alert('Notifications: You have 2 upcoming itinerary updates!');
+                        window.alert(msg);
                       } else {
-                        Alert.alert('Notifications', 'You have 2 upcoming itinerary updates!');
+                        Alert.alert('Notifications', msg);
                       }
                     }}>
                     <Bell size={19} color="#0f172a" strokeWidth={2.2} />
@@ -181,15 +239,15 @@ export default function HomeScreen() {
               {/* Greetings & Inspirational Cursive Banner */}
               <View style={styles.heroGreetingRow}>
                 <View style={styles.heroGreetingLeft}>
-                  <Text style={styles.helloText}>Hello, Alex!</Text>
+                  <Text style={styles.helloText}>Hello, Traveller!</Text>
                   <Text style={styles.subGreetingText}>
                     Where will your next{'\n'}adventure take you?
                   </Text>
                 </View>
 
                 <View style={styles.cursiveTagWrapper}>
-                  <Text style={styles.cursiveTagText}>Collect Experiences</Text>
-                  <Text style={styles.cursiveTagText}>Not Things</Text>
+                  <Text style={styles.cursiveTagText}>Good Trips</Text>
+                  <Text style={styles.cursiveTagText}>Brighter Stories</Text>
                   <View style={styles.cursiveUnderline} />
                 </View>
               </View>
@@ -200,7 +258,7 @@ export default function HomeScreen() {
                 <TextInput
                   value={searchQuery}
                   onChangeText={setSearchQuery}
-                  placeholder="Search your trips..."
+                  placeholder="Search your itineraries or code..."
                   placeholderTextColor="#94a3b8"
                   style={styles.searchInput}
                 />
@@ -232,7 +290,7 @@ export default function HomeScreen() {
                       ? styles.filterPillTextActive
                       : styles.filterPillTextInactive,
                   ]}>
-                  All Trips
+                  All Trips {trips.length > 0 ? `(${trips.length})` : ''}
                 </Text>
               </TouchableOpacity>
 
@@ -295,35 +353,80 @@ export default function HomeScreen() {
             </ScrollView>
           </View>
 
-          {/* Trip Cards List */}
+          {/* Main Body: Either Empty State or Trip Cards */}
           <View style={styles.tripsListContainer}>
-            {filteredTrips.length > 0 ? (
-              filteredTrips.map((trip) => (
-                <TripCard
-                  key={trip.id}
-                  trip={trip}
-                  onPress={handleCardPress}
-                  onOptionsPress={handleCardOptions}
-                />
-              ))
-            ) : (
-              <View style={styles.emptyContainer}>
-                <Compass size={36} color="#94a3b8" />
-                <Text style={styles.emptyTitle}>No trips found</Text>
+            {!isLoaded ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#2563eb" />
+                <Text style={styles.loadingText}>Loading itineraries...</Text>
+              </View>
+            ) : trips.length === 0 ? (
+              // Clean Traveller Empty State
+              <View style={styles.emptyStateCard}>
+                <View style={styles.emptyIconCircle}>
+                  <Ticket size={34} color="#2563eb" strokeWidth={2.2} />
+                </View>
+                <Text style={styles.emptyTitle}>No Itineraries Imported Yet</Text>
                 <Text style={styles.emptySubtitle}>
-                  Try clearing your search or choose a different category.
+                  This mobile app is your personal read-only companion. Your travel agent creates trips in the web dashboard.
+                </Text>
+                <Text style={styles.emptyHint}>
+                  Tap below to enter your unique Trip Code and download your complete itinerary and documents.
+                </Text>
+
+                {/* Primary Button */}
+                <TouchableOpacity
+                  activeOpacity={0.88}
+                  onPress={() => setIsImportModalOpen(true)}
+                  style={styles.emptyImportBtn}>
+                  <Ticket size={18} color="#ffffff" strokeWidth={2.5} />
+                  <Text style={styles.emptyImportBtnText}>Enter Trip Code to Import</Text>
+                </TouchableOpacity>
+
+                {/* Quick Sample Suggestions */}
+                <View style={styles.quickCodesWrapper}>
+                  <Text style={styles.quickCodesLabel}>Try sample codes from web planner:</Text>
+                  <View style={styles.quickCodesRow}>
+                    {DEMO_QUICK_CODES.map((demo) => (
+                      <TouchableOpacity
+                        key={demo}
+                        onPress={() => setIsImportModalOpen(true)}
+                        style={styles.quickCodePill}>
+                        <Text style={styles.quickCodeText}>{demo}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </View>
+            ) : filteredTrips.length > 0 ? (
+              <>
+                {filteredTrips.map((trip) => (
+                  <TripCard
+                    key={trip.id}
+                    trip={trip}
+                    onPress={handleCardPress}
+                    onOptionsPress={handleCardOptions}
+                  />
+                ))}
+
+                {/* Add Another Trip Button */}
+                <TouchableOpacity
+                  activeOpacity={0.88}
+                  onPress={() => setIsImportModalOpen(true)}
+                  style={styles.addTripButton}>
+                  <Plus size={18} color="#ffffff" strokeWidth={2.8} />
+                  <Text style={styles.addTripButtonText}>Add New Trip with Code</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <View style={styles.noMatchContainer}>
+                <Compass size={36} color="#94a3b8" />
+                <Text style={styles.noMatchTitle}>No matching trips</Text>
+                <Text style={styles.noMatchSubtitle}>
+                  Try clearing your search query or choosing another tab.
                 </Text>
               </View>
             )}
-
-            {/* "+ Add New Trip" Prominent Button */}
-            <TouchableOpacity
-              activeOpacity={0.88}
-              onPress={() => setIsAddModalOpen(true)}
-              style={styles.addTripButton}>
-              <Plus size={18} color="#ffffff" strokeWidth={2.8} />
-              <Text style={styles.addTripButtonText}>Add New Trip</Text>
-            </TouchableOpacity>
           </View>
         </ScrollView>
 
@@ -398,19 +501,11 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Modals */}
-        <AddTripModal
-          visible={isAddModalOpen}
-          onClose={() => setIsAddModalOpen(false)}
-          onAddTrip={handleAddTrip}
-        />
-
-        <TripDetailModal
-          trip={selectedTrip}
-          visible={isDetailModalOpen}
-          onClose={() => setIsDetailModalOpen(false)}
-          onToggleSave={handleToggleSave}
-          onDeleteTrip={handleDeleteTrip}
+        {/* Modal to Import Trip via Trip Code */}
+        <ImportTripModal
+          visible={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          onTripImported={handleTripImported}
         />
       </View>
     </PhoneViewWrapper>
@@ -622,18 +717,131 @@ const styles = StyleSheet.create({
   tripsListContainer: {
     paddingHorizontal: 16,
   },
-  emptyContainer: {
+  loadingContainer: {
+    paddingVertical: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  emptyStateCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#64748b',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 2,
+    marginTop: 6,
+    marginBottom: 16,
+  },
+  emptyIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0f172a',
+    textAlign: 'center',
+    letterSpacing: -0.3,
+  },
+  emptySubtitle: {
+    fontSize: 12.5,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginTop: 8,
+    paddingHorizontal: 8,
+  },
+  emptyHint: {
+    fontSize: 12,
+    color: '#2563eb',
+    textAlign: 'center',
+    fontWeight: '600',
+    marginTop: 10,
+    paddingHorizontal: 8,
+  },
+  emptyImportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2563eb',
+    borderRadius: 13,
+    paddingVertical: 13,
+    paddingHorizontal: 22,
+    marginTop: 20,
+    gap: 8,
+    width: '100%',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  emptyImportBtnText: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  quickCodesWrapper: {
+    marginTop: 20,
+    alignItems: 'center',
+    width: '100%',
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    paddingTop: 16,
+  },
+  quickCodesLabel: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#64748b',
+    marginBottom: 8,
+  },
+  quickCodesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  quickCodePill: {
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  quickCodeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  noMatchContainer: {
     paddingVertical: 40,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
-  emptyTitle: {
+  noMatchTitle: {
     fontSize: 15,
     fontWeight: '700',
     color: '#334155',
   },
-  emptySubtitle: {
+  noMatchSubtitle: {
     fontSize: 12.5,
     color: '#64748b',
     textAlign: 'center',

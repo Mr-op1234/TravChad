@@ -26,6 +26,7 @@ export interface TripDocument {
 
 export interface TripData {
   id: string;
+  tripCode?: string;
   name: string;
   tagline: string;
   status: "upcoming" | "completed";
@@ -42,6 +43,7 @@ export interface TripData {
 export const INITIAL_TRIPS: TripData[] = [
   {
     id: "1",
+    tripCode: "TC-JAPAN",
     name: "Japan",
     tagline: "EXPLORE · DISCOVER · EXPERIENCE",
     status: "upcoming",
@@ -208,6 +210,7 @@ export const INITIAL_TRIPS: TripData[] = [
   },
   {
     id: "2",
+    tripCode: "TC-ITALY",
     name: "Italy",
     tagline: "EXPLORE · DISCOVER · EXPERIENCE",
     status: "upcoming",
@@ -242,6 +245,7 @@ export const INITIAL_TRIPS: TripData[] = [
   },
   {
     id: "3",
+    tripCode: "TC-NEWZEALAND",
     name: "New Zealand",
     tagline: "EXPLORE · DISCOVER · EXPERIENCE",
     status: "completed",
@@ -273,6 +277,7 @@ export const INITIAL_TRIPS: TripData[] = [
   },
   {
     id: "4",
+    tripCode: "TC-BALI",
     name: "Bali",
     tagline: "EXPLORE · DISCOVER · EXPERIENCE",
     status: "completed",
@@ -303,6 +308,7 @@ export const INITIAL_TRIPS: TripData[] = [
   },
   {
     id: "5",
+    tripCode: "TC-SANTORINI",
     name: "Santorini",
     tagline: "EXPLORE · DISCOVER · EXPERIENCE",
     status: "completed",
@@ -336,22 +342,43 @@ export const INITIAL_TRIPS: TripData[] = [
 
 const STORAGE_KEY = "travchad_trips_data_v2";
 
+export function getOrAssignTripCode(trip: { id: string; name: string; tripCode?: string }): string {
+  if (trip.tripCode && trip.tripCode.trim()) return trip.tripCode.trim().toUpperCase();
+  const namePart = trip.name.replace(/[^a-zA-Z]/g, "").slice(0, 5).toUpperCase() || "TRIP";
+  const idDigits = trip.id.replace(/\D/g, "").slice(-4) || String(Date.now()).slice(-4);
+  return `TC-${namePart}-${idDigits}`;
+}
+
+export function syncTripsWithBackend(trips: TripData[]): void {
+  if (typeof window === "undefined") return;
+  fetch("/api/trips/sync", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ trips }),
+  }).catch((err) => console.warn("Backend trips sync skipped:", err));
+}
+
 export function getStoredTrips(): TripData[] {
   if (typeof window === "undefined") return INITIAL_TRIPS;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_TRIPS));
+      syncTripsWithBackend(INITIAL_TRIPS);
       return INITIAL_TRIPS;
     }
     const parsed: TripData[] = JSON.parse(raw);
-    return parsed.map((t) => {
+    const withCodes = parsed.map((t) => {
       const matchInit = INITIAL_TRIPS.find((i) => i.id === t.id);
       return {
         ...t,
+        tripCode: getOrAssignTripCode(t),
         documents: t.documents && t.documents.length > 0 ? t.documents : (matchInit?.documents || []),
       };
     });
+    // Silent sync to ensure backend matches
+    syncTripsWithBackend(withCodes);
+    return withCodes;
   } catch {
     return INITIAL_TRIPS;
   }
@@ -360,7 +387,12 @@ export function getStoredTrips(): TripData[] {
 export function saveStoredTrips(trips: TripData[]): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(trips));
+    const withCodes = trips.map((t) => ({
+      ...t,
+      tripCode: getOrAssignTripCode(t),
+    }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(withCodes));
+    syncTripsWithBackend(withCodes);
   } catch (err: unknown) {
     console.error("Failed to save trips", err);
     const isQuota =

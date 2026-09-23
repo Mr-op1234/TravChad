@@ -901,9 +901,28 @@ export default function Dashboard() {
 
                 <div className="p-[16px_18px_18px] flex-1 flex flex-col justify-between">
                   <div>
-                    <h3 className="text-[19px] font-bold text-[#172554] mb-[11px] tracking-[-0.2px]">
-                      {trip.name}
-                    </h3>
+                    <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                      <h3 className="text-[19px] font-bold text-[#172554] tracking-[-0.2px]">
+                        {trip.name}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const code = trip.tripCode || `TC-${trip.name.toUpperCase().slice(0, 4)}`;
+                          navigator.clipboard.writeText(code);
+                          showToast(`Copied Trip Code "${code}" to clipboard!`);
+                        }}
+                        title="Click to copy Mobile Trip Code"
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#eff6ff] text-[#2563eb] border border-[#bfdbfe] hover:bg-[#dbeafe] transition cursor-pointer"
+                      >
+                        <svg className="w-3 h-3 text-[#2563eb]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                          <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                          <line x1="12" y1="18" x2="12.01" y2="18" />
+                        </svg>
+                        <span>{trip.tripCode || `TC-${trip.name.toUpperCase().slice(0, 4)}`}</span>
+                      </button>
+                    </div>
                     <div className="flex items-center flex-wrap gap-x-[9px] gap-y-[5px] text-[13.5px] text-[#64748b]">
                       <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
                         <svg
@@ -1055,9 +1074,28 @@ export default function Dashboard() {
                 <div className="p-4 md:p-[18px_22px] flex flex-col justify-center">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="text-[19px] font-bold text-[#172554] mb-2 tracking-[-0.2px]">
-                        {trip.name}
-                      </h3>
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <h3 className="text-[19px] font-bold text-[#172554] tracking-[-0.2px]">
+                          {trip.name}
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const code = trip.tripCode || `TC-${trip.name.toUpperCase().slice(0, 4)}`;
+                            navigator.clipboard.writeText(code);
+                            showToast(`Copied Trip Code "${code}" to clipboard!`);
+                          }}
+                          title="Click to copy Mobile Trip Code"
+                          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#eff6ff] text-[#2563eb] border border-[#bfdbfe] hover:bg-[#dbeafe] transition cursor-pointer"
+                        >
+                          <svg className="w-3 h-3 text-[#2563eb]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                            <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                            <line x1="12" y1="18" x2="12.01" y2="18" />
+                          </svg>
+                          <span>{trip.tripCode || `TC-${trip.name.toUpperCase().slice(0, 4)}`}</span>
+                        </button>
+                      </div>
                       <div className="flex items-center flex-wrap gap-x-[9px] gap-y-[5px] text-[13.5px] text-[#64748b]">
                         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
                           {formatDate(trip.startDate)}
