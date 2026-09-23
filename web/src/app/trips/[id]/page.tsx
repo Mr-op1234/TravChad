@@ -6,6 +6,15 @@ import { useParams, useRouter } from "next/navigation";
 import { TripData, EventItem, TripDocument, getStoredTrips, saveStoredTrips } from "@/lib/tripsData";
 import RichTextEditor from "@/components/RichTextEditor";
 
+const PRESET_BANNERS = [
+  { name: "Kyoto Pagoda", url: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=2000&q=85" },
+  { name: "Tokyo Skyline", url: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?auto=format&fit=crop&w=2000&q=85" },
+  { name: "Mount Fuji", url: "https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?auto=format&fit=crop&w=2000&q=85" },
+  { name: "Cherry Blossoms", url: "https://images.unsplash.com/photo-1522383225653-ed111181a951?auto=format&fit=crop&w=2000&q=85" },
+  { name: "Tropical Beach", url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=2000&q=85" },
+  { name: "Swiss Alps", url: "https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?auto=format&fit=crop&w=2000&q=85" },
+];
+
 export default function TripDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -21,7 +30,15 @@ export default function TripDetailPage() {
   const [isBannerMenuOpen, setIsBannerMenuOpen] = useState(false);
   const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
   const [bannerInputUrl, setBannerInputUrl] = useState("");
+  const [bannerPreviewUrl, setBannerPreviewUrl] = useState("");
+  const [bannerTab, setBannerTab] = useState<"url" | "upload" | "presets">("url");
+  const [bannerDragActive, setBannerDragActive] = useState(false);
   const bannerFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Card Photo Modal state
+  const [cardPhotoUrlInput, setCardPhotoUrlInput] = useState("");
+  const [cardPhotoPreviewUrl, setCardPhotoPreviewUrl] = useState("");
+  const [cardPhotoDragActive, setCardPhotoDragActive] = useState(false);
 
   // Add Event Modal state
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
@@ -84,7 +101,6 @@ export default function TripDetailPage() {
 
   // Add Photo to specific Card Modal State
   const [cardPhotoModalEventId, setCardPhotoModalEventId] = useState<string | null>(null);
-  const [cardPhotoUrlInput, setCardPhotoUrlInput] = useState("");
   const cardPhotoFileInputRef = useRef<HTMLInputElement>(null);
 
   // In-card direct edit states
@@ -189,9 +205,11 @@ export default function TripDetailPage() {
     const reader = new FileReader();
     reader.onload = (event) => {
       const dataUrl = event.target?.result as string;
+      setBannerPreviewUrl(dataUrl);
       updateBannerImage(dataUrl);
     };
     reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   const updateBannerImage = (imageUrl: string) => {
@@ -222,6 +240,7 @@ export default function TripDetailPage() {
       showToast("Cover image uploaded");
     };
     reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   // Event Photos upload from local file(s)
@@ -240,6 +259,7 @@ export default function TripDetailPage() {
       reader.readAsDataURL(file);
     });
     showToast(`${files.length} photo(s) uploaded`);
+    e.target.value = "";
   };
 
   const handleAddPhotoUrl = () => {
@@ -468,6 +488,7 @@ export default function TripDetailPage() {
       showToast("Cover image updated");
     };
     reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   const handleEditPhotosUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -485,6 +506,7 @@ export default function TripDetailPage() {
       reader.readAsDataURL(file);
     });
     showToast(`${files.length} photo(s) added`);
+    e.target.value = "";
   };
 
   const handleAddEditPhotoUrl = () => {
@@ -589,6 +611,7 @@ export default function TripDetailPage() {
       };
       reader.readAsDataURL(file);
     });
+    e.target.value = "";
   };
 
   // Notes Management on Card
@@ -820,7 +843,7 @@ export default function TripDetailPage() {
             <div className="flex items-center gap-2.5">
               <button
                 onClick={() => setIsLiked(!isLiked)}
-                className="w-10 h-10 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-md grid place-items-center text-white transition"
+                className="w-10 h-10 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-md grid place-items-center text-white transition hover:scale-105"
                 aria-label="Save trip"
               >
                 <svg
@@ -836,12 +859,33 @@ export default function TripDetailPage() {
                 </svg>
               </button>
 
+              {/* Direct Change Banner button with Camera icon */}
+              <button
+                type="button"
+                onClick={() => {
+                  setBannerPreviewUrl(currentTrip.heroImage || currentTrip.image || "");
+                  setIsBannerModalOpen(true);
+                }}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md text-white text-[13.5px] font-medium transition hover:scale-105 border border-white/20 shadow-md"
+                title="Change Banner Image (Upload or Paste URL)"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+                <span className="hidden sm:inline">Change Banner</span>
+              </button>
+
               {/* Three dots button to change top banner image */}
               <div className="relative" onClick={(e) => e.stopPropagation()}>
                 <button
-                  onClick={() => setIsBannerMenuOpen(!isBannerMenuOpen)}
-                  className="w-10 h-10 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-md grid place-items-center text-white transition"
-                  aria-label="Trip actions"
+                  onClick={() => {
+                    setBannerPreviewUrl(currentTrip.heroImage || currentTrip.image || "");
+                    setIsBannerModalOpen(true);
+                  }}
+                  className="w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md grid place-items-center text-white transition hover:scale-105 border border-white/20 shadow-md"
+                  aria-label="Change banner"
+                  title="Change banner image (Upload or Paste URL)"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                     <circle cx="12" cy="5" r="1.8" />
@@ -849,60 +893,15 @@ export default function TripDetailPage() {
                     <circle cx="12" cy="19" r="1.8" />
                   </svg>
                 </button>
-
-                {isBannerMenuOpen && (
-                  <div className="absolute right-0 top-12 bg-white rounded-[12px] shadow-[0_12px_32px_rgba(15,23,42,0.25)] border border-[#e2e8f0] p-1.5 min-w-[210px] z-50">
-                    <button
-                      onClick={() => {
-                        setIsBannerMenuOpen(false);
-                        setIsBannerModalOpen(true);
-                      }}
-                      className="flex items-center gap-2.5 w-full p-2.5 rounded-[8px] text-[13.5px] font-semibold text-[#1e293b] hover:bg-[#f1f5f9] transition text-left"
-                    >
-                      <svg
-                        className="w-4 h-4 text-[#2563eb]"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                        <circle cx="8.5" cy="8.5" r="1.5" />
-                        <polyline points="21 15 16 10 5 21" />
-                      </svg>
-                      Change Banner Image
-                    </button>
-                    <button
-                      onClick={() => {
-                        bannerFileInputRef.current?.click();
-                        setIsBannerMenuOpen(false);
-                      }}
-                      className="flex items-center gap-2.5 w-full p-2.5 rounded-[8px] text-[13.5px] font-semibold text-[#1e293b] hover:bg-[#f1f5f9] transition text-left"
-                    >
-                      <svg
-                        className="w-4 h-4 text-[#2563eb]"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="17 8 12 3 7 8" />
-                        <line x1="12" y1="3" x2="12" y2="15" />
-                      </svg>
-                      Upload Local Banner
-                    </button>
-                  </div>
-                )}
-                {/* Hidden banner file input */}
-                <input
-                  type="file"
-                  ref={bannerFileInputRef}
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleBannerFileUpload}
-                />
               </div>
+              {/* Hidden banner file input */}
+              <input
+                type="file"
+                ref={bannerFileInputRef}
+                accept="image/*"
+                className="hidden"
+                onChange={handleBannerFileUpload}
+              />
             </div>
           </div>
 
@@ -1709,19 +1708,41 @@ export default function TripDetailPage() {
       {isBannerModalOpen && (
         <div
           className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm grid place-items-center z-50 p-4"
-          onClick={() => setIsBannerModalOpen(false)}
+          onClick={() => {
+            setIsBannerModalOpen(false);
+            setBannerInputUrl("");
+            setBannerPreviewUrl("");
+          }}
         >
           <div
-            className="bg-white rounded-[20px] w-full max-w-[500px] shadow-[0_24px_64px_rgba(2,8,23,0.35)] p-6"
+            className="bg-white rounded-[24px] w-full max-w-[560px] max-h-[90vh] flex flex-col shadow-[0_24px_64px_rgba(2,8,23,0.35)] p-6 overflow-hidden animate-[pop_0.2s_ease]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-4 border-b border-[#eef2f7]">
-              <h3 className="text-[18px] font-bold text-[#172554]">
-                Change Top Banner Image
-              </h3>
+            <div className="flex items-center justify-between pb-3.5 border-b border-[#eef2f7]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-[10px] bg-[#eff6ff] text-[#2563eb] grid place-items-center shadow-xs">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-[18px] font-bold text-[#172554] tracking-tight">
+                    Change Top Banner Image
+                  </h3>
+                  <p className="text-[12.5px] text-[#64748b]">
+                    Paste an image URL link or upload a photo from your device.
+                  </p>
+                </div>
+              </div>
               <button
-                onClick={() => setIsBannerModalOpen(false)}
-                className="w-8 h-8 rounded-[8px] grid place-items-center text-[#64748b] hover:bg-[#f1f5f9]"
+                onClick={() => {
+                  setIsBannerModalOpen(false);
+                  setBannerInputUrl("");
+                  setBannerPreviewUrl("");
+                }}
+                className="w-8 h-8 rounded-[8px] grid place-items-center text-[#64748b] hover:bg-[#f1f5f9] transition"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                   <line x1="18" y1="6" x2="6" y2="18" />
@@ -1730,52 +1751,212 @@ export default function TripDetailPage() {
               </button>
             </div>
 
-            <div className="mt-5 space-y-4">
-              <div>
-                <label className="block text-[13px] font-semibold text-[#334155] mb-1.5">
-                  Option 1: Paste Image URL Link
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="https://images.unsplash.com/..."
-                    value={bannerInputUrl}
-                    onChange={(e) => setBannerInputUrl(e.target.value)}
-                    className="flex-1 p-2.5 border border-[#dfe6ee] rounded-[9px] text-[13.5px] text-[#1e293b] outline-none focus:border-[#2563eb]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => updateBannerImage(bannerInputUrl.trim())}
-                    className="px-4 py-2.5 rounded-[9px] bg-[#2563eb] text-white text-[13.5px] font-semibold hover:bg-[#1d4ed8]"
-                  >
-                    Apply URL
-                  </button>
+            <div className="overflow-y-auto flex-1 pr-1 space-y-4 pt-3.5">
+              {/* Live Banner Preview Box */}
+              <div className="relative h-[140px] rounded-[16px] overflow-hidden border border-[#e2e8f0] bg-slate-900 shadow-inner group">
+                <img
+                  src={bannerPreviewUrl || currentTrip?.heroImage || currentTrip?.image}
+                  alt="Banner Preview"
+                  className="w-full h-full object-cover transition-all duration-300"
+                  onError={(e) => {
+                    if (currentTrip) {
+                      (e.target as HTMLImageElement).src = currentTrip.heroImage || currentTrip.image || "";
+                    }
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/30" />
+                <div className="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-semibold border border-white/20">
+                  Live Preview
+                </div>
+                <div className="absolute bottom-3 left-4 text-white">
+                  <span className="text-[11px] uppercase tracking-wider text-white/75 font-semibold block">
+                    {currentTrip?.name}
+                  </span>
+                  <span className="text-[15px] font-serif font-bold">
+                    {currentTrip?.tagline || "EXPLORE · DISCOVER · EXPERIENCE"}
+                  </span>
                 </div>
               </div>
 
-              <div className="relative flex py-2 items-center">
-                <div className="flex-grow border-t border-gray-200"></div>
-                <span className="flex-shrink mx-3 text-gray-400 text-xs uppercase font-medium">Or</span>
-                <div className="flex-grow border-t border-gray-200"></div>
-              </div>
-
-              <div>
-                <label className="block text-[13px] font-semibold text-[#334155] mb-1.5">
-                  Option 2: Upload from Local Device
-                </label>
+              {/* Navigation Tabs */}
+              <div className="flex border-b border-[#e2e8f0]">
                 <button
                   type="button"
-                  onClick={() => bannerFileInputRef.current?.click()}
-                  className="w-full py-3 px-4 border-2 border-dashed border-[#cbd5e1] hover:border-[#2563eb] rounded-[12px] flex items-center justify-center gap-2 text-[#334155] hover:text-[#2563eb] font-semibold text-[13.5px] transition bg-[#f8fafc]"
+                  onClick={() => setBannerTab("url")}
+                  className={`flex-1 py-2 text-[13px] font-bold border-b-2 transition flex items-center justify-center gap-1.5 ${
+                    bannerTab === "url"
+                      ? "border-[#2563eb] text-[#2563eb]"
+                      : "border-transparent text-[#64748b] hover:text-[#1e293b]"
+                  }`}
                 >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  </svg>
+                  Paste Image URL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBannerTab("upload")}
+                  className={`flex-1 py-2 text-[13px] font-bold border-b-2 transition flex items-center justify-center gap-1.5 ${
+                    bannerTab === "upload"
+                      ? "border-[#2563eb] text-[#2563eb]"
+                      : "border-transparent text-[#64748b] hover:text-[#1e293b]"
+                  }`}
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                     <polyline points="17 8 12 3 7 8" />
                     <line x1="12" y1="3" x2="12" y2="15" />
                   </svg>
-                  Browse Local Image File
+                  Upload from Device
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBannerTab("presets")}
+                  className={`flex-1 py-2 text-[13px] font-bold border-b-2 transition flex items-center justify-center gap-1.5 ${
+                    bannerTab === "presets"
+                      ? "border-[#2563eb] text-[#2563eb]"
+                      : "border-transparent text-[#64748b] hover:text-[#1e293b]"
+                  }`}
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                  Presets
                 </button>
               </div>
+
+              {/* Tab 1: Paste Image URL */}
+              {bannerTab === "url" && (
+                <div className="space-y-3 pt-1">
+                  <label className="block text-[12.5px] font-semibold text-[#334155]">
+                    Enter Direct Image Link
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      placeholder="https://images.unsplash.com/photo-..."
+                      value={bannerInputUrl}
+                      onChange={(e) => {
+                        setBannerInputUrl(e.target.value);
+                        if (e.target.value.trim().startsWith("http")) {
+                          setBannerPreviewUrl(e.target.value.trim());
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (bannerInputUrl.trim()) {
+                            updateBannerImage(bannerInputUrl.trim());
+                          }
+                        }
+                      }}
+                      className="flex-1 p-2.5 border border-[#dfe6ee] rounded-[10px] text-[13.5px] text-[#1e293b] outline-none focus:border-[#2563eb]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (bannerInputUrl.trim()) {
+                          setBannerPreviewUrl(bannerInputUrl.trim());
+                        }
+                      }}
+                      className="px-3.5 py-2.5 rounded-[10px] border border-[#cbd5e1] text-[#334155] font-semibold text-[13px] hover:bg-[#f1f5f9] transition"
+                    >
+                      Preview
+                    </button>
+                  </div>
+                  <p className="text-[11.5px] text-[#64748b]">
+                    Paste any public image link (Unsplash, Pexels, Imgur, Google Photos, etc.).
+                  </p>
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="button"
+                      disabled={!bannerInputUrl.trim()}
+                      onClick={() => updateBannerImage(bannerInputUrl.trim())}
+                      className="px-5 py-2.5 rounded-[10px] bg-[#2563eb] text-white font-semibold text-[13.5px] hover:bg-[#1d4ed8] disabled:opacity-50 disabled:cursor-not-allowed transition shadow-md"
+                    >
+                      Apply Banner Image
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 2: Upload from Device */}
+              {bannerTab === "upload" && (
+                <div className="space-y-3 pt-1">
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setBannerDragActive(true);
+                    }}
+                    onDragLeave={() => setBannerDragActive(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setBannerDragActive(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          const dataUrl = ev.target?.result as string;
+                          setBannerPreviewUrl(dataUrl);
+                          updateBannerImage(dataUrl);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    onClick={() => bannerFileInputRef.current?.click()}
+                    className={`w-full py-8 px-6 border-2 border-dashed rounded-[16px] flex flex-col items-center justify-center text-center cursor-pointer transition ${
+                      bannerDragActive
+                        ? "border-[#2563eb] bg-[#eff6ff]"
+                        : "border-[#cbd5e1] bg-[#f8fafc] hover:border-[#2563eb] hover:bg-[#f0f7ff]"
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-full bg-[#eff6ff] text-[#2563eb] grid place-items-center mb-2.5 shadow-sm">
+                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                    </div>
+                    <p className="text-[14px] font-bold text-[#1e293b]">
+                      Click to browse or drag & drop image here
+                    </p>
+                    <p className="text-[12px] text-[#64748b] mt-1">
+                      PNG, JPG, WEBP, GIF from your computer
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 3: Presets */}
+              {bannerTab === "presets" && (
+                <div className="space-y-3 pt-1">
+                  <p className="text-[12px] text-[#64748b]">
+                    Click any curated photo to instantly set as your trip banner:
+                  </p>
+                  <div className="grid grid-cols-3 gap-2.5 max-h-[220px] overflow-y-auto pr-1">
+                    {PRESET_BANNERS.map((preset) => (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        onClick={() => {
+                          setBannerPreviewUrl(preset.url);
+                          updateBannerImage(preset.url);
+                        }}
+                        className="group/item relative aspect-video rounded-[10px] overflow-hidden border border-[#cbd5e1] hover:border-[#2563eb] hover:ring-2 hover:ring-[#2563eb]/40 transition text-left shadow-xs"
+                      >
+                        <img src={preset.url} alt={preset.name} className="w-full h-full object-cover group-hover/item:scale-105 transition duration-300" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent flex items-end p-2">
+                          <span className="text-[11px] font-bold text-white truncate w-full">
+                            {preset.name}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -2743,30 +2924,64 @@ export default function TripDetailPage() {
               </button>
             </div>
 
-            <div className="mt-5 space-y-4">
+            <div className="mt-4 space-y-4">
               <div>
                 <label className="block text-[13px] font-semibold text-[#334155] mb-1.5">
                   Option 1: Paste Image URL Link
                 </label>
                 <div className="flex gap-2">
                   <input
-                    type="text"
+                    type="url"
                     placeholder="https://images.unsplash.com/..."
                     value={cardPhotoUrlInput}
-                    onChange={(e) => setCardPhotoUrlInput(e.target.value)}
+                    onChange={(e) => {
+                      setCardPhotoUrlInput(e.target.value);
+                      if (e.target.value.trim().startsWith("http")) {
+                        setCardPhotoPreviewUrl(e.target.value.trim());
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (cardPhotoUrlInput.trim()) {
+                          handleAddPhotoToEvent(cardPhotoModalEventId, cardPhotoUrlInput.trim());
+                          setCardPhotoPreviewUrl("");
+                        }
+                      }
+                    }}
                     className="flex-1 p-2.5 border border-[#dfe6ee] rounded-[9px] text-[13.5px] text-[#1e293b] outline-none focus:border-[#2563eb]"
                   />
                   <button
                     type="button"
-                    onClick={() => handleAddPhotoToEvent(cardPhotoModalEventId, cardPhotoUrlInput)}
-                    className="px-4 py-2.5 rounded-[9px] bg-[#2563eb] text-white text-[13.5px] font-semibold hover:bg-[#1d4ed8] transition"
+                    onClick={() => {
+                      if (cardPhotoUrlInput.trim()) {
+                        handleAddPhotoToEvent(cardPhotoModalEventId, cardPhotoUrlInput.trim());
+                        setCardPhotoPreviewUrl("");
+                      }
+                    }}
+                    disabled={!cardPhotoUrlInput.trim()}
+                    className="px-4 py-2.5 rounded-[9px] bg-[#2563eb] text-white text-[13.5px] font-semibold hover:bg-[#1d4ed8] disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
                     Add URL
                   </button>
                 </div>
+
+                {cardPhotoPreviewUrl && (
+                  <div className="mt-2.5 relative aspect-video rounded-[10px] overflow-hidden border border-[#cbd5e1] bg-slate-100 max-h-[140px]">
+                    <img
+                      src={cardPhotoPreviewUrl}
+                      alt="URL Preview"
+                      className="w-full h-full object-cover"
+                      onError={() => setCardPhotoPreviewUrl("")}
+                    />
+                    <div className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full bg-black/60 text-white text-[10.5px] font-semibold">
+                      Preview
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="relative flex py-2 items-center">
+              <div className="relative flex py-1 items-center">
                 <div className="flex-grow border-t border-gray-200"></div>
                 <span className="flex-shrink mx-3 text-gray-400 text-xs uppercase font-medium">Or</span>
                 <div className="flex-grow border-t border-gray-200"></div>
@@ -2776,18 +2991,47 @@ export default function TripDetailPage() {
                 <label className="block text-[13px] font-semibold text-[#334155] mb-1.5">
                   Option 2: Upload from Local Device
                 </label>
-                <button
-                  type="button"
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setCardPhotoDragActive(true);
+                  }}
+                  onDragLeave={() => setCardPhotoDragActive(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setCardPhotoDragActive(false);
+                    const files = e.dataTransfer.files;
+                    if (!files || files.length === 0) return;
+                    Array.from(files).forEach((file) => {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        const dataUrl = ev.target?.result as string;
+                        handleAddPhotoToEvent(cardPhotoModalEventId, dataUrl);
+                      };
+                      reader.readAsDataURL(file);
+                    });
+                  }}
                   onClick={() => cardPhotoFileInputRef.current?.click()}
-                  className="w-full py-3 px-4 border-2 border-dashed border-[#cbd5e1] hover:border-[#2563eb] rounded-[12px] flex items-center justify-center gap-2 text-[#334155] hover:text-[#2563eb] font-semibold text-[13.5px] transition bg-[#f8fafc]"
+                  className={`w-full py-6 px-4 border-2 border-dashed rounded-[14px] flex flex-col items-center justify-center text-center cursor-pointer transition ${
+                    cardPhotoDragActive
+                      ? "border-[#2563eb] bg-[#eff6ff]"
+                      : "border-[#cbd5e1] bg-[#f8fafc] hover:border-[#2563eb] hover:bg-[#f0f7ff]"
+                  }`}
                 >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="17 8 12 3 7 8" />
-                    <line x1="12" y1="3" x2="12" y2="15" />
-                  </svg>
-                  Browse Device Photos
-                </button>
+                  <div className="w-10 h-10 rounded-full bg-[#eff6ff] text-[#2563eb] grid place-items-center mb-2">
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                  </div>
+                  <span className="text-[13.5px] font-bold text-[#1e293b]">
+                    Click to browse or drop photos here
+                  </span>
+                  <span className="text-[11.5px] text-[#64748b] mt-0.5">
+                    Supports multiple JPG, PNG, WEBP files
+                  </span>
+                </div>
                 <input
                   type="file"
                   ref={cardPhotoFileInputRef}

@@ -125,6 +125,35 @@ export default function RichTextEditor({
   const selectedTableRef = useRef<HTMLTableElement | null>(null);
   const selectedCellRef = useRef<HTMLTableCellElement | null>(null);
 
+  // Image insertion state
+  const [showImageMenu, setShowImageMenu] = useState(false);
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const [imagePreviewUrl, setImagePreviewUrl] = useState("");
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
+
+  const insertImage = (url: string) => {
+    if (!url.trim()) return;
+    const imgHtml = `<p><img src="${url.trim()}" alt="Inserted image" style="max-width: 100%; height: auto; border-radius: 8px; margin: 12px 0; display: block;" /></p><p><br></p>`;
+    editorRef.current?.focus();
+    document.execCommand("insertHTML", false, imgHtml);
+    setShowImageMenu(false);
+    setImageUrlInput("");
+    setImagePreviewUrl("");
+    emitChange();
+  };
+
+  const handleEditorImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      insertImage(dataUrl);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
   // Keep internal editor content in sync with external value on mount or when value changes externally
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
@@ -1034,6 +1063,122 @@ export default function RichTextEditor({
               >
                 Insert Table
               </button>
+            </div>
+          )}
+        </div>
+
+        {/* ================= INSERT IMAGE BUTTON ================= */}
+        <div className="relative pl-1">
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setShowImageMenu(!showImageMenu);
+              setShowTableMenu(false);
+              setShowColorPalette(false);
+              setShowHighlightPalette(false);
+            }}
+            title="Insert Image (URL or Upload)"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[12px] font-semibold text-[#334155] hover:bg-white hover:text-[#2563eb] hover:shadow-xs transition"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+            <span>Image</span>
+          </button>
+
+          {showImageMenu && (
+            <div
+              className="absolute top-8 left-0 z-50 bg-white p-3.5 rounded-[14px] shadow-[0_12px_32px_rgba(15,23,42,0.2)] border border-[#cbd5e1] w-[260px] text-[#1e293b] animate-[pop_0.15s_ease]"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="text-[13px] font-bold text-[#0f172a] mb-2.5 pb-1.5 border-b border-slate-100 flex items-center justify-between">
+                <span>Insert Image</span>
+                <button
+                  type="button"
+                  onClick={() => setShowImageMenu(false)}
+                  className="text-slate-400 hover:text-slate-600 text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Option 1: URL */}
+              <div className="space-y-2 mb-3">
+                <label className="block text-[11px] font-semibold text-[#64748b]">
+                  Paste Image URL:
+                </label>
+                <div className="flex gap-1.5">
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={imageUrlInput}
+                    onChange={(e) => {
+                      setImageUrlInput(e.target.value);
+                      if (e.target.value.trim().startsWith("http")) {
+                        setImagePreviewUrl(e.target.value.trim());
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        insertImage(imageUrlInput.trim());
+                      }
+                    }}
+                    className="flex-1 p-1.5 text-[12px] border border-slate-300 rounded-[6px] outline-none focus:border-[#2563eb]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => insertImage(imageUrlInput.trim())}
+                    disabled={!imageUrlInput.trim()}
+                    className="px-2.5 py-1.5 rounded-[6px] bg-[#2563eb] text-white text-[11.5px] font-semibold hover:bg-[#1d4ed8] disabled:opacity-50 transition"
+                  >
+                    Insert
+                  </button>
+                </div>
+
+                {imagePreviewUrl && (
+                  <div className="relative aspect-video rounded-[8px] overflow-hidden border border-slate-200 mt-1 max-h-[100px]">
+                    <img
+                      src={imagePreviewUrl}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                      onError={() => setImagePreviewUrl("")}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-gray-200"></div>
+                <span className="flex-shrink mx-2 text-gray-400 text-[10px] uppercase font-medium">Or</span>
+                <div className="flex-grow border-t border-gray-200"></div>
+              </div>
+
+              {/* Option 2: Upload from Device */}
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => imageFileInputRef.current?.click()}
+                  className="w-full py-2 px-3 border border-dashed border-[#cbd5e1] hover:border-[#2563eb] rounded-[8px] flex items-center justify-center gap-1.5 text-[#334155] hover:text-[#2563eb] font-semibold text-[12px] transition bg-[#f8fafc]"
+                >
+                  <svg className="w-3.5 h-3.5 text-[#2563eb]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  Upload from Device
+                </button>
+                <input
+                  type="file"
+                  ref={imageFileInputRef}
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleEditorImageFileUpload}
+                />
+              </div>
             </div>
           )}
         </div>
