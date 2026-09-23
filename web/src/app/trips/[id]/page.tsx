@@ -1263,7 +1263,7 @@ export default function TripDetailPage() {
                           </div>
                         ) : (
                           <div
-                            className="text-[14px] leading-relaxed text-[#475569] w-full prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5"
+                            className="text-[14px] leading-relaxed text-[#475569] w-full prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_table]:border-collapse [&_table]:w-full [&_table]:my-3 overflow-x-auto"
                             dangerouslySetInnerHTML={{ __html: evt.description }}
                           />
                         )}

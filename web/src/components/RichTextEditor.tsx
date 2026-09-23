@@ -53,6 +53,44 @@ const HIGHLIGHT_COLORS = [
   { label: "Purple", color: "#e9d5ff" },
 ];
 
+const BORDER_STYLES = [
+  { label: "Solid", value: "solid" },
+  { label: "Dashed", value: "dashed" },
+  { label: "Dotted", value: "dotted" },
+  { label: "Double", value: "double" },
+  { label: "None", value: "none" },
+];
+
+const BORDER_WIDTHS = [
+  { label: "1px (Thin)", value: "1px" },
+  { label: "2px (Medium)", value: "2px" },
+  { label: "3px (Thick)", value: "3px" },
+  { label: "4px (Heavy)", value: "4px" },
+];
+
+const BORDER_COLORS = [
+  { label: "Slate", color: "#cbd5e1" },
+  { label: "Gray", color: "#94a3b8" },
+  { label: "Dark Slate", color: "#334155" },
+  { label: "Blue", color: "#2563eb" },
+  { label: "Sky", color: "#0284c7" },
+  { label: "Emerald", color: "#10b981" },
+  { label: "Amber", color: "#f59e0b" },
+  { label: "Red", color: "#ef4444" },
+  { label: "Purple", color: "#8b5cf6" },
+];
+
+const CELL_SHADING_COLORS = [
+  { label: "None", color: "transparent" },
+  { label: "Light Gray", color: "#f8fafc" },
+  { label: "Slate 100", color: "#f1f5f9" },
+  { label: "Blue 50", color: "#eff6ff" },
+  { label: "Green 50", color: "#f0fdf4" },
+  { label: "Yellow 50", color: "#fefce8" },
+  { label: "Red 50", color: "#fef2f2" },
+  { label: "Purple 50", color: "#faf5ff" },
+];
+
 export default function RichTextEditor({
   value,
   onChange,
@@ -66,6 +104,26 @@ export default function RichTextEditor({
   const [showHighlightPalette, setShowHighlightPalette] = useState(false);
   const [currentColor, setCurrentColor] = useState("#0f172a");
   const [currentHighlight, setCurrentHighlight] = useState("transparent");
+
+  // Table State
+  const [showTableMenu, setShowTableMenu] = useState(false);
+  const [tableRowsInput, setTableRowsInput] = useState(3);
+  const [tableColsInput, setTableColsInput] = useState(3);
+  const [includeHeaderRow, setIncludeHeaderRow] = useState(true);
+
+  // Table context tracking
+  const [isInsideTable, setIsInsideTable] = useState(false);
+  const [showBorderMenu, setShowBorderMenu] = useState(false);
+  const [showShadingMenu, setShowShadingMenu] = useState(false);
+
+  // Border style settings
+  const [tableBorderStyle, setTableBorderStyle] = useState("solid");
+  const [tableBorderWidth, setTableBorderWidth] = useState("1px");
+  const [tableBorderColor, setTableBorderColor] = useState("#cbd5e1");
+  const [tableBorderPreset, setTableBorderPreset] = useState<"all" | "outer" | "horizontal" | "none">("all");
+
+  const selectedTableRef = useRef<HTMLTableElement | null>(null);
+  const selectedCellRef = useRef<HTMLTableCellElement | null>(null);
 
   // Keep internal editor content in sync with external value on mount or when value changes externally
   useEffect(() => {
@@ -81,10 +139,56 @@ export default function RichTextEditor({
     }
   }, [onChange]);
 
+  // Update table context when cursor moves
+  const updateTableContext = useCallback(() => {
+    const sel = window.getSelection();
+    if (!sel || !sel.anchorNode || !editorRef.current) return;
+
+    let node: Node | null = sel.anchorNode;
+    if (node.nodeType === Node.TEXT_NODE) {
+      node = node.parentNode;
+    }
+    const cell = (node as HTMLElement)?.closest?.("td, th") as HTMLTableCellElement | null;
+    const table = (node as HTMLElement)?.closest?.("table") as HTMLTableElement | null;
+
+    if (table && cell) {
+      selectedTableRef.current = table;
+      selectedCellRef.current = cell;
+      setIsInsideTable(true);
+
+      const curStyle = table.style.borderStyle || cell.style.borderStyle || "solid";
+      const curWidth = table.style.borderWidth || cell.style.borderWidth || "1px";
+      const curColor = table.style.borderColor || cell.style.borderColor || "#cbd5e1";
+      setTableBorderStyle(curStyle);
+      setTableBorderWidth(curWidth);
+      setTableBorderColor(curColor);
+    } else if (editorRef.current.contains(node)) {
+      selectedTableRef.current = null;
+      selectedCellRef.current = null;
+      setIsInsideTable(false);
+      setShowBorderMenu(false);
+      setShowShadingMenu(false);
+    }
+  }, []);
+
   // Execute standard formatting commands
   const exec = (command: string, arg?: string) => {
     document.execCommand("styleWithCSS", false, "true");
     document.execCommand(command, false, arg);
+
+    // Apply alignment to table cell if active
+    if (command.startsWith("justify") && selectedCellRef.current) {
+      const alignMap: Record<string, string> = {
+        justifyLeft: "left",
+        justifyCenter: "center",
+        justifyRight: "right",
+        justifyFull: "justify",
+      };
+      if (alignMap[command]) {
+        selectedCellRef.current.style.textAlign = alignMap[command];
+      }
+    }
+
     emitChange();
     editorRef.current?.focus();
   };
@@ -106,6 +210,13 @@ export default function RichTextEditor({
         }
       });
     }
+
+    // Apply to collapsed cell selection
+    const sel = window.getSelection();
+    if (sel && sel.isCollapsed && selectedCellRef.current) {
+      selectedCellRef.current.style.fontSize = sizePx;
+    }
+
     emitChange();
   };
 
@@ -114,6 +225,12 @@ export default function RichTextEditor({
     setSelectedFont(family);
     document.execCommand("styleWithCSS", false, "true");
     document.execCommand("fontName", false, family);
+
+    const sel = window.getSelection();
+    if (sel && sel.isCollapsed && selectedCellRef.current) {
+      selectedCellRef.current.style.fontFamily = family === "inherit" ? "" : family;
+    }
+
     emitChange();
   };
 
@@ -122,6 +239,12 @@ export default function RichTextEditor({
     setCurrentColor(color);
     document.execCommand("styleWithCSS", false, "true");
     document.execCommand("foreColor", false, color);
+
+    const sel = window.getSelection();
+    if (sel && sel.isCollapsed && selectedCellRef.current) {
+      selectedCellRef.current.style.color = color;
+    }
+
     setShowColorPalette(false);
     emitChange();
   };
@@ -131,8 +254,273 @@ export default function RichTextEditor({
     setCurrentHighlight(color);
     document.execCommand("styleWithCSS", false, "true");
     document.execCommand("hiliteColor", false, color);
+
+    const sel = window.getSelection();
+    if (sel && sel.isCollapsed && selectedCellRef.current) {
+      selectedCellRef.current.style.backgroundColor = color === "transparent" ? "" : color;
+    }
+
     setShowHighlightPalette(false);
     emitChange();
+  };
+
+  // ================= TABLE OPERATIONS =================
+  const applyBordersToTable = (
+    style = tableBorderStyle,
+    width = tableBorderWidth,
+    color = tableBorderColor,
+    preset = tableBorderPreset
+  ) => {
+    const table = selectedTableRef.current;
+    if (!table) return;
+
+    const allCells = table.querySelectorAll<HTMLTableCellElement>("th, td");
+    table.style.borderCollapse = "collapse";
+
+    if (preset === "none" || style === "none") {
+      table.style.border = "none";
+      allCells.forEach((c) => {
+        c.style.border = "none";
+      });
+    } else if (preset === "outer") {
+      table.style.border = `${width} ${style} ${color}`;
+      allCells.forEach((c) => {
+        c.style.border = "none";
+      });
+    } else if (preset === "horizontal") {
+      table.style.border = "none";
+      allCells.forEach((c) => {
+        c.style.borderLeft = "none";
+        c.style.borderRight = "none";
+        c.style.borderTop = `${width} ${style} ${color}`;
+        c.style.borderBottom = `${width} ${style} ${color}`;
+      });
+    } else {
+      // "all" - standard grid
+      table.style.border = `${width} ${style} ${color}`;
+      allCells.forEach((c) => {
+        c.style.border = `${width} ${style} ${color}`;
+      });
+    }
+
+    setTableBorderStyle(style);
+    setTableBorderWidth(width);
+    setTableBorderColor(color);
+    setTableBorderPreset(preset);
+    emitChange();
+  };
+
+  const insertTable = (rows: number, cols: number, withHeader: boolean) => {
+    let html = `<table style="border-collapse: collapse; width: 100%; margin: 12px 0; border: ${tableBorderWidth} ${tableBorderStyle} ${tableBorderColor};">`;
+    let effectiveRows = rows;
+
+    if (withHeader && rows > 0) {
+      html += `<thead><tr>`;
+      for (let c = 0; c < cols; c++) {
+        html += `<th style="border: ${tableBorderWidth} ${tableBorderStyle} ${tableBorderColor}; padding: 8px 12px; background-color: #f8fafc; font-weight: 600; text-align: left;">Header ${c + 1}</th>`;
+      }
+      html += `</tr></thead>`;
+      effectiveRows -= 1;
+    }
+
+    html += `<tbody>`;
+    for (let r = 0; r < Math.max(1, effectiveRows); r++) {
+      html += `<tr>`;
+      for (let c = 0; c < cols; c++) {
+        html += `<td style="border: ${tableBorderWidth} ${tableBorderStyle} ${tableBorderColor}; padding: 8px 12px; vertical-align: top;">Cell</td>`;
+      }
+      html += `</tr>`;
+    }
+    html += `</tbody></table><p><br></p>`;
+
+    editorRef.current?.focus();
+    document.execCommand("insertHTML", false, html);
+    setShowTableMenu(false);
+    emitChange();
+    setTimeout(updateTableContext, 60);
+  };
+
+  const addRow = (above: boolean) => {
+    const cell = selectedCellRef.current;
+    if (!cell) return;
+    const row = cell.closest("tr");
+    if (!row) return;
+
+    const numCols = row.children.length;
+    const isHead = row.closest("thead") !== null;
+    const newRow = document.createElement("tr");
+
+    for (let i = 0; i < numCols; i++) {
+      const newCell = document.createElement(isHead && above ? "th" : "td");
+      newCell.style.border = `${tableBorderWidth} ${tableBorderStyle} ${tableBorderColor}`;
+      newCell.style.padding = "8px 12px";
+      newCell.style.verticalAlign = "top";
+      if (isHead && above) {
+        newCell.style.backgroundColor = "#f8fafc";
+        newCell.style.fontWeight = "600";
+      }
+      newCell.innerHTML = "<br>";
+      newRow.appendChild(newCell);
+    }
+
+    if (above) {
+      row.parentNode?.insertBefore(newRow, row);
+    } else {
+      row.parentNode?.insertBefore(newRow, row.nextSibling);
+    }
+
+    emitChange();
+    selectedCellRef.current = newRow.children[0] as HTMLTableCellElement;
+  };
+
+  const deleteRow = () => {
+    const cell = selectedCellRef.current;
+    if (!cell) return;
+    const row = cell.closest("tr");
+    const table = cell.closest("table");
+    if (!row || !table) return;
+
+    if (table.rows.length <= 1) {
+      table.remove();
+      setIsInsideTable(false);
+    } else {
+      const nextFocusRow = row.nextElementSibling || row.previousElementSibling;
+      row.remove();
+      if (nextFocusRow) {
+        selectedCellRef.current = nextFocusRow.children[0] as HTMLTableCellElement;
+      }
+    }
+    emitChange();
+  };
+
+  const addColumn = (left: boolean) => {
+    const cell = selectedCellRef.current;
+    if (!cell) return;
+    const table = cell.closest("table");
+    if (!table) return;
+
+    const colIndex = cell.cellIndex;
+
+    Array.from(table.rows).forEach((r) => {
+      const isHeader = r.closest("thead") !== null || r.children[colIndex]?.tagName.toLowerCase() === "th";
+      const newCell = document.createElement(isHeader ? "th" : "td");
+      newCell.style.border = `${tableBorderWidth} ${tableBorderStyle} ${tableBorderColor}`;
+      newCell.style.padding = "8px 12px";
+      newCell.style.verticalAlign = "top";
+      if (isHeader) {
+        newCell.style.backgroundColor = "#f8fafc";
+        newCell.style.fontWeight = "600";
+      }
+      newCell.innerHTML = "<br>";
+
+      const targetChild = r.children[colIndex];
+      if (targetChild) {
+        if (left) {
+          r.insertBefore(newCell, targetChild);
+        } else {
+          r.insertBefore(newCell, targetChild.nextSibling);
+        }
+      } else {
+        r.appendChild(newCell);
+      }
+    });
+
+    emitChange();
+  };
+
+  const deleteColumn = () => {
+    const cell = selectedCellRef.current;
+    if (!cell) return;
+    const table = cell.closest("table");
+    if (!table) return;
+
+    const colIndex = cell.cellIndex;
+    const totalCols = table.rows[0]?.children.length || 0;
+
+    if (totalCols <= 1) {
+      table.remove();
+      setIsInsideTable(false);
+    } else {
+      Array.from(table.rows).forEach((r) => {
+        if (r.children[colIndex]) {
+          r.children[colIndex].remove();
+        }
+      });
+    }
+    emitChange();
+  };
+
+  const deleteTable = () => {
+    if (selectedTableRef.current) {
+      selectedTableRef.current.remove();
+      selectedTableRef.current = null;
+      selectedCellRef.current = null;
+      setIsInsideTable(false);
+      emitChange();
+    }
+  };
+
+  const applyCellShading = (color: string) => {
+    if (selectedCellRef.current) {
+      selectedCellRef.current.style.backgroundColor = color === "transparent" ? "" : color;
+      setShowShadingMenu(false);
+      emitChange();
+    }
+  };
+
+  const applyFontToTable = () => {
+    if (selectedTableRef.current) {
+      selectedTableRef.current.style.fontFamily = selectedFont === "inherit" ? "" : selectedFont;
+      selectedTableRef.current.style.fontSize = selectedSize;
+      const allCells = selectedTableRef.current.querySelectorAll<HTMLTableCellElement>("th, td");
+      allCells.forEach((c) => {
+        c.style.fontFamily = selectedFont === "inherit" ? "" : selectedFont;
+        c.style.fontSize = selectedSize;
+      });
+      emitChange();
+    }
+  };
+
+  // Keyboard navigation inside tables: Tab / Shift+Tab
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Tab") {
+      const sel = window.getSelection();
+      if (!sel || !sel.anchorNode) return;
+      let node: Node | null = sel.anchorNode;
+      if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
+      const cell = (node as HTMLElement)?.closest?.("td, th") as HTMLTableCellElement | null;
+      const table = (node as HTMLElement)?.closest?.("table") as HTMLTableElement | null;
+
+      if (cell && table) {
+        e.preventDefault();
+        const cells = Array.from(table.querySelectorAll<HTMLTableCellElement>("th, td"));
+        const currentIndex = cells.indexOf(cell);
+
+        if (e.shiftKey) {
+          if (currentIndex > 0) {
+            const prevCell = cells[currentIndex - 1];
+            const range = document.createRange();
+            range.selectNodeContents(prevCell);
+            range.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            selectedCellRef.current = prevCell;
+          }
+        } else {
+          if (currentIndex < cells.length - 1) {
+            const nextCell = cells[currentIndex + 1];
+            const range = document.createRange();
+            range.selectNodeContents(nextCell);
+            range.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            selectedCellRef.current = nextCell;
+          } else {
+            addRow(false);
+          }
+        }
+      }
+    }
   };
 
   return (
@@ -491,7 +879,7 @@ export default function RichTextEditor({
         </div>
 
         {/* Clear Formatting */}
-        <div>
+        <div className="pr-1.5 border-r border-[#e2e8f0]">
           <button
             type="button"
             onMouseDown={(e) => {
@@ -510,16 +898,469 @@ export default function RichTextEditor({
             </svg>
           </button>
         </div>
+
+        {/* ================= INSERT TABLE BUTTON ================= */}
+        <div className="relative pl-1">
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setShowTableMenu(!showTableMenu);
+              setShowColorPalette(false);
+              setShowHighlightPalette(false);
+            }}
+            title="Insert Table"
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[12px] font-semibold transition ${
+              isInsideTable
+                ? "bg-[#e0f2fe] text-[#0284c7] border border-[#bae6fd]"
+                : "text-[#334155] hover:bg-white hover:text-[#2563eb] hover:shadow-xs"
+            }`}
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <line x1="3" y1="9" x2="21" y2="9" />
+              <line x1="3" y1="15" x2="21" y2="15" />
+              <line x1="9" y1="3" x2="9" y2="21" />
+              <line x1="15" y1="3" x2="15" y2="21" />
+            </svg>
+            <span>Table</span>
+          </button>
+
+          {showTableMenu && (
+            <div
+              className="absolute top-8 left-0 z-50 bg-white p-3.5 rounded-[14px] shadow-[0_12px_32px_rgba(15,23,42,0.2)] border border-[#cbd5e1] w-[240px] text-[#1e293b] animate-[pop_0.15s_ease]"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="text-[13px] font-bold text-[#0f172a] mb-2.5 pb-1.5 border-b border-slate-100 flex items-center justify-between">
+                <span>Insert Table</span>
+                <button
+                  type="button"
+                  onClick={() => setShowTableMenu(false)}
+                  className="text-slate-400 hover:text-slate-600 text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Quick Presets */}
+              <div className="mb-3">
+                <div className="text-[11px] font-semibold text-[#64748b] mb-1.5">Quick Presets:</div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      insertTable(2, 2, includeHeaderRow);
+                    }}
+                    className="p-1.5 rounded-[6px] border border-slate-200 hover:border-[#2563eb] hover:bg-[#eff6ff] text-[11.5px] font-medium text-center"
+                  >
+                    2 × 2 Table
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      insertTable(3, 3, includeHeaderRow);
+                    }}
+                    className="p-1.5 rounded-[6px] border border-slate-200 hover:border-[#2563eb] hover:bg-[#eff6ff] text-[11.5px] font-medium text-center"
+                  >
+                    3 × 3 Table
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      insertTable(4, 2, includeHeaderRow);
+                    }}
+                    className="p-1.5 rounded-[6px] border border-slate-200 hover:border-[#2563eb] hover:bg-[#eff6ff] text-[11.5px] font-medium text-center"
+                  >
+                    4 × 2 Table
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      insertTable(5, 4, includeHeaderRow);
+                    }}
+                    className="p-1.5 rounded-[6px] border border-slate-200 hover:border-[#2563eb] hover:bg-[#eff6ff] text-[11.5px] font-medium text-center"
+                  >
+                    5 × 4 Table
+                  </button>
+                </div>
+              </div>
+
+              {/* Custom Size Inputs */}
+              <div className="space-y-2 mb-3 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-[11.5px] font-medium text-[#475569]">Rows:</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={15}
+                    value={tableRowsInput}
+                    onChange={(e) => setTableRowsInput(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-16 p-1 text-[12px] border border-slate-300 rounded-[5px] text-center"
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-[11.5px] font-medium text-[#475569]">Columns:</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={tableColsInput}
+                    onChange={(e) => setTableColsInput(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-16 p-1 text-[12px] border border-slate-300 rounded-[5px] text-center"
+                  />
+                </div>
+                <label className="flex items-center gap-2 text-[11.5px] text-[#475569] cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    checked={includeHeaderRow}
+                    onChange={(e) => setIncludeHeaderRow(e.target.checked)}
+                    className="rounded text-[#2563eb]"
+                  />
+                  <span>Include Header Row</span>
+                </label>
+              </div>
+
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  insertTable(tableRowsInput, tableColsInput, includeHeaderRow);
+                }}
+                className="w-full py-1.5 px-3 rounded-[7px] bg-[#2563eb] text-white text-[12px] font-semibold hover:bg-[#1d4ed8] transition shadow-xs text-center"
+              >
+                Insert Table
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* ================= TABLE CONTEXT TOOLBAR ================= */}
+      {isInsideTable && (
+        <div className="bg-[#f0f9ff] border-b border-[#bae6fd] px-3 py-1.5 flex flex-wrap items-center gap-2 text-[12px] text-[#0369a1] animate-[pop_0.15s_ease]">
+          {/* Badge */}
+          <div className="flex items-center gap-1.5 font-bold text-[#0284c7] pr-2 border-r border-[#bae6fd]">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <line x1="3" y1="9" x2="21" y2="9" />
+              <line x1="3" y1="15" x2="21" y2="15" />
+              <line x1="9" y1="3" x2="9" y2="21" />
+              <line x1="15" y1="3" x2="15" y2="21" />
+            </svg>
+            <span>Table Tools</span>
+          </div>
+
+          {/* Rows actions */}
+          <div className="flex items-center gap-1 pr-2 border-r border-[#bae6fd]">
+            <span className="text-[11px] font-semibold text-[#0284c7] uppercase">Rows:</span>
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                addRow(true);
+              }}
+              title="Add Row Above"
+              className="px-2 py-0.5 rounded-[5px] bg-white border border-[#bae6fd] hover:bg-[#e0f2fe] text-[#0369a1] font-medium transition"
+            >
+              + Above
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                addRow(false);
+              }}
+              title="Add Row Below"
+              className="px-2 py-0.5 rounded-[5px] bg-white border border-[#bae6fd] hover:bg-[#e0f2fe] text-[#0369a1] font-medium transition"
+            >
+              + Below
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                deleteRow();
+              }}
+              title="Delete Current Row"
+              className="px-2 py-0.5 rounded-[5px] bg-white border border-red-200 text-red-600 hover:bg-red-50 font-medium transition"
+            >
+              ✕ Row
+            </button>
+          </div>
+
+          {/* Columns actions */}
+          <div className="flex items-center gap-1 pr-2 border-r border-[#bae6fd]">
+            <span className="text-[11px] font-semibold text-[#0284c7] uppercase">Cols:</span>
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                addColumn(true);
+              }}
+              title="Add Column Left"
+              className="px-2 py-0.5 rounded-[5px] bg-white border border-[#bae6fd] hover:bg-[#e0f2fe] text-[#0369a1] font-medium transition"
+            >
+              + Left
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                addColumn(false);
+              }}
+              title="Add Column Right"
+              className="px-2 py-0.5 rounded-[5px] bg-white border border-[#bae6fd] hover:bg-[#e0f2fe] text-[#0369a1] font-medium transition"
+            >
+              + Right
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                deleteColumn();
+              }}
+              title="Delete Current Column"
+              className="px-2 py-0.5 rounded-[5px] bg-white border border-red-200 text-red-600 hover:bg-red-50 font-medium transition"
+            >
+              ✕ Col
+            </button>
+          </div>
+
+          {/* Table Borders dropdown popover */}
+          <div className="relative pr-2 border-r border-[#bae6fd]">
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setShowBorderMenu(!showBorderMenu);
+                setShowShadingMenu(false);
+              }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[5px] bg-white border border-[#bae6fd] hover:bg-[#e0f2fe] text-[#0369a1] font-semibold transition"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+              </svg>
+              <span>Borders</span>
+              <span
+                className="w-2.5 h-2.5 rounded-full border border-slate-300"
+                style={{ backgroundColor: tableBorderColor }}
+              />
+              <span className="text-[10px]">▼</span>
+            </button>
+
+            {showBorderMenu && (
+              <div
+                className="absolute top-8 left-0 z-50 bg-white p-3 rounded-[12px] shadow-[0_12px_32px_rgba(15,23,42,0.2)] border border-[#cbd5e1] w-[260px] text-[#1e293b] animate-[pop_0.15s_ease]"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div className="text-[12px] font-bold text-[#0f172a] mb-2 pb-1 border-b border-slate-100 flex items-center justify-between">
+                  <span>Table Border Styles</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowBorderMenu(false)}
+                    className="text-slate-400 hover:text-slate-600 text-xs"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Border Style */}
+                <div className="mb-2">
+                  <label className="block text-[11px] font-semibold text-[#64748b] mb-1">Style</label>
+                  <select
+                    value={tableBorderStyle}
+                    onChange={(e) => {
+                      applyBordersToTable(e.target.value, tableBorderWidth, tableBorderColor, tableBorderPreset);
+                    }}
+                    className="w-full p-1.5 text-[12px] bg-white border border-[#cbd5e1] rounded-[6px] outline-none"
+                  >
+                    {BORDER_STYLES.map((bs) => (
+                      <option key={bs.value} value={bs.value}>{bs.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Border Width */}
+                <div className="mb-2">
+                  <label className="block text-[11px] font-semibold text-[#64748b] mb-1">Width</label>
+                  <select
+                    value={tableBorderWidth}
+                    onChange={(e) => {
+                      applyBordersToTable(tableBorderStyle, e.target.value, tableBorderColor, tableBorderPreset);
+                    }}
+                    className="w-full p-1.5 text-[12px] bg-white border border-[#cbd5e1] rounded-[6px] outline-none"
+                  >
+                    {BORDER_WIDTHS.map((bw) => (
+                      <option key={bw.value} value={bw.value}>{bw.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Border Color */}
+                <div className="mb-2">
+                  <label className="block text-[11px] font-semibold text-[#64748b] mb-1">Color</label>
+                  <div className="grid grid-cols-5 gap-1.5 mb-1.5">
+                    {BORDER_COLORS.map((bc) => (
+                      <button
+                        key={bc.color}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          applyBordersToTable(tableBorderStyle, tableBorderWidth, bc.color, tableBorderPreset);
+                        }}
+                        className={`w-7 h-5 rounded-[4px] border ${tableBorderColor === bc.color ? "ring-2 ring-[#2563eb]" : "border-slate-300"}`}
+                        style={{ backgroundColor: bc.color }}
+                        title={bc.label}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Border Preset */}
+                <div className="mb-2">
+                  <label className="block text-[11px] font-semibold text-[#64748b] mb-1">Apply To</label>
+                  <div className="grid grid-cols-2 gap-1 text-[11px]">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        applyBordersToTable(tableBorderStyle, tableBorderWidth, tableBorderColor, "all");
+                      }}
+                      className={`p-1.5 rounded-[5px] border text-center font-medium ${tableBorderPreset === "all" ? "bg-[#2563eb] text-white border-[#2563eb]" : "bg-slate-50 border-slate-200 hover:bg-slate-100"}`}
+                    >
+                      All Borders
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        applyBordersToTable(tableBorderStyle, tableBorderWidth, tableBorderColor, "outer");
+                      }}
+                      className={`p-1.5 rounded-[5px] border text-center font-medium ${tableBorderPreset === "outer" ? "bg-[#2563eb] text-white border-[#2563eb]" : "bg-slate-50 border-slate-200 hover:bg-slate-100"}`}
+                    >
+                      Outer Only
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        applyBordersToTable(tableBorderStyle, tableBorderWidth, tableBorderColor, "horizontal");
+                      }}
+                      className={`p-1.5 rounded-[5px] border text-center font-medium ${tableBorderPreset === "horizontal" ? "bg-[#2563eb] text-white border-[#2563eb]" : "bg-slate-50 border-slate-200 hover:bg-slate-100"}`}
+                    >
+                      Horizontal Only
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        applyBordersToTable("none", "0px", "transparent", "none");
+                      }}
+                      className={`p-1.5 rounded-[5px] border text-center font-medium ${tableBorderPreset === "none" ? "bg-[#2563eb] text-white border-[#2563eb]" : "bg-slate-50 border-slate-200 hover:bg-slate-100"}`}
+                    >
+                      No Borders
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Cell Shading */}
+          <div className="relative pr-2 border-r border-[#bae6fd]">
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setShowShadingMenu(!showShadingMenu);
+                setShowBorderMenu(false);
+              }}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-white border border-[#bae6fd] hover:bg-[#e0f2fe] text-[#0369a1] font-medium transition"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 11l-8-8-8 8" />
+                <path d="M5 19h14" />
+              </svg>
+              <span>Cell Color</span>
+            </button>
+
+            {showShadingMenu && (
+              <div
+                className="absolute top-8 left-0 z-50 bg-white p-2.5 rounded-[12px] shadow-[0_12px_32px_rgba(15,23,42,0.2)] border border-[#cbd5e1] w-[180px] text-[#1e293b] animate-[pop_0.15s_ease]"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div className="text-[11px] font-semibold text-[#64748b] mb-1.5">Cell Shading</div>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {CELL_SHADING_COLORS.map((sc) => (
+                    <button
+                      key={sc.color}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        applyCellShading(sc.color);
+                      }}
+                      className="w-8 h-6 rounded-[5px] border border-slate-200 hover:scale-110 transition flex items-center justify-center text-[10px] text-slate-500"
+                      style={{ backgroundColor: sc.color }}
+                      title={sc.label}
+                    >
+                      {sc.color === "transparent" ? "None" : ""}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Apply Font to Table */}
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              applyFontToTable();
+            }}
+            title="Apply current font family and size to all cells"
+            className="px-2 py-0.5 rounded-[5px] bg-white border border-[#bae6fd] hover:bg-[#e0f2fe] text-[#0369a1] font-medium transition"
+          >
+            Apply Font to Table
+          </button>
+
+          {/* Delete Table */}
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              deleteTable();
+            }}
+            className="ml-auto inline-flex items-center gap-1 px-2.5 py-0.5 rounded-[5px] bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 font-semibold transition"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+            Delete Table
+          </button>
+        </div>
+      )}
 
       {/* ================= EDITABLE CANVAS ================= */}
       <div
         ref={editorRef}
         contentEditable
-        onInput={emitChange}
+        onInput={() => {
+          emitChange();
+          updateTableContext();
+        }}
         onBlur={emitChange}
+        onKeyUp={updateTableContext}
+        onMouseUp={updateTableContext}
+        onClick={updateTableContext}
+        onKeyDown={handleKeyDown}
         data-placeholder={placeholder}
-        className={`p-3.5 text-[#1e293b] leading-relaxed outline-none overflow-y-auto ${minHeight} prose prose-sm max-w-none focus:outline-none`}
+        className={`p-3.5 text-[#1e293b] leading-relaxed outline-none overflow-y-auto ${minHeight} prose prose-sm max-w-none focus:outline-none [&_table]:border-collapse [&_table]:w-full [&_table]:my-3`}
         style={{
           fontFamily: selectedFont === "inherit" ? undefined : selectedFont,
           fontSize: selectedSize,
