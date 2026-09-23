@@ -23,13 +23,15 @@ export function toDDMMYYYY(val: string): string {
     return `${d}-${m}-${y}`;
   }
 
-  // Try parsing generic date string
-  const d = new Date(trimmed);
-  if (!isNaN(d.getTime())) {
-    const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const year = d.getFullYear();
-    return `${day}-${month}-${year}`;
+  // Try parsing generic date string only if it has enough characters and is not purely numeric/partial
+  if (trimmed.length >= 8 && !/^\d+$/.test(trimmed)) {
+    const d = new Date(trimmed);
+    if (!isNaN(d.getTime()) && d.getFullYear() > 1900 && d.getFullYear() < 2100) {
+      const day = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const year = d.getFullYear();
+      return `${day}-${month}-${year}`;
+    }
   }
 
   return trimmed;
@@ -81,23 +83,18 @@ export default function DatePickerInput({
   id,
 }: DatePickerInputProps) {
   const hiddenInputRef = useRef<HTMLInputElement>(null);
-  const [prevVal, setPrevVal] = useState(value);
+  const [prevVal, setPrevVal] = useState(value || "");
 
-  // Normalize incoming value to DD-MM-YYYY on change
   useEffect(() => {
-    const normalized = toDDMMYYYY(value);
-    if (normalized !== value) {
-      onChange(normalized);
-    }
-    setPrevVal(normalized);
-  }, [value, onChange]);
+    setPrevVal(value || "");
+  }, [value]);
 
-  const displayVal = toDDMMYYYY(value);
+  const displayVal = toDDMMYYYY(value || "");
   const isoVal = toYYYYMMDD(displayVal);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const nextVal = e.target.value;
-    const isDeleting = nextVal.length < prevVal.length;
+    const isDeleting = nextVal.length < (prevVal || "").length;
     setPrevVal(nextVal);
 
     // If user is deleting, allow raw edit
@@ -108,6 +105,7 @@ export default function DatePickerInput({
 
     // Auto-format digits with dashes: DD-MM-YYYY
     const formatted = formatAsDDMMYYYY(nextVal, false);
+    setPrevVal(formatted);
     onChange(formatted);
   };
 
@@ -115,7 +113,16 @@ export default function DatePickerInput({
     const picked = e.target.value; // YYYY-MM-DD
     if (!picked) return;
     const formatted = toDDMMYYYY(picked);
+    setPrevVal(formatted);
     onChange(formatted);
+  };
+
+  const handleBlur = () => {
+    if (!value) return;
+    const normalized = toDDMMYYYY(value);
+    if (normalized !== value) {
+      onChange(normalized);
+    }
   };
 
   const openPicker = () => {
@@ -140,6 +147,7 @@ export default function DatePickerInput({
         placeholder={placeholder}
         value={displayVal}
         onChange={handleTextChange}
+        onBlur={handleBlur}
         maxLength={10}
         className={`w-full pr-10 ${className}`}
       />

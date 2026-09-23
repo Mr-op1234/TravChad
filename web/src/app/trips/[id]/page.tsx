@@ -1989,7 +1989,7 @@ export default function TripDetailPage() {
                   </label>
                   <DatePickerInput
                     value={newEvent.date}
-                    onChange={(date) => setNewEvent({ ...newEvent, date })}
+                    onChange={(date) => setNewEvent((prev) => ({ ...prev, date }))}
                     placeholder="DD-MM-YYYY"
                     className="p-2.5 border border-[#dfe6ee] rounded-[9px] text-[13.5px] text-[#1e293b] outline-none focus:border-[#2563eb]"
                   />
@@ -2732,7 +2732,7 @@ export default function TripDetailPage() {
                   </label>
                   <DatePickerInput
                     value={editEventData.date}
-                    onChange={(date) => setEditEventData({ ...editEventData, date })}
+                    onChange={(date) => setEditEventData((prev) => ({ ...prev, date }))}
                     placeholder="DD-MM-YYYY"
                     className="p-2.5 border border-[#dfe6ee] rounded-[9px] text-[13.5px] text-[#1e293b] outline-none focus:border-[#2563eb]"
                   />

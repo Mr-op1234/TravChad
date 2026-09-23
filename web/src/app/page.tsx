@@ -1214,7 +1214,7 @@ export default function Dashboard() {
                       required
                       value={formData.startDate}
                       onChange={(val) =>
-                        setFormData({ ...formData, startDate: val })
+                        setFormData((prev) => ({ ...prev, startDate: val }))
                       }
                       placeholder="DD-MM-YYYY"
                       className="p-[10px_12px] border border-[#dfe6ee] rounded-[9px] text-[14px] text-[#1e293b] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.13)] transition"
@@ -1228,7 +1228,7 @@ export default function Dashboard() {
                       required
                       value={formData.endDate}
                       onChange={(val) =>
-                        setFormData({ ...formData, endDate: val })
+                        setFormData((prev) => ({ ...prev, endDate: val }))
                       }
                       placeholder="DD-MM-YYYY"
                       className="p-[10px_12px] border border-[#dfe6ee] rounded-[9px] text-[14px] text-[#1e293b] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.13)] transition"
