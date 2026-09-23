@@ -395,10 +395,9 @@ export default function TripDetailPage() {
       .map((n) => n.trim())
       .filter(Boolean);
 
-    const fallbackImg =
+    const chosenCover =
       newEvent.coverImage.trim() ||
-      newEvent.photos[0] ||
-      "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=600&q=80";
+      (newEvent.photos.length > 0 ? newEvent.photos[0] : "");
 
     const nextDayNumber =
       (currentTrip.events[currentTrip.events.length - 1]?.dayNumber || 0) + 1;
@@ -413,8 +412,8 @@ export default function TripDetailPage() {
       description:
         newEvent.description ||
         "Explore landmarks, sample regional culinary specialties, and create memories.",
-      coverImage: fallbackImg,
-      photos: newEvent.photos.length > 0 ? newEvent.photos : [fallbackImg],
+      coverImage: chosenCover,
+      photos: newEvent.photos,
       notes:
         parsedNotes.length > 0
           ? parsedNotes
@@ -705,10 +704,8 @@ export default function TripDetailPage() {
       .map((n) => n.trim())
       .filter(Boolean);
 
-    const fallbackImg =
-      editEventData.coverImage.trim() ||
-      editEventData.photos[0] ||
-      "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=600&q=80";
+    const finalCover = editEventData.coverImage.trim();
+    const finalPhotos = [...editEventData.photos];
 
     const updatedEvents = currentTrip.events.map((evt) => {
       if (evt.id !== editEventData.id) return evt;
@@ -719,9 +716,9 @@ export default function TripDetailPage() {
         duration: editEventData.calculatedDuration || evt.duration,
         location: editEventData.location,
         description: editEventData.description,
-        notes: parsedNotes.length > 0 ? parsedNotes : evt.notes,
-        coverImage: fallbackImg,
-        photos: editEventData.photos.length > 0 ? editEventData.photos : [fallbackImg],
+        notes: parsedNotes,
+        coverImage: finalCover,
+        photos: finalPhotos,
       };
     });
 
@@ -778,7 +775,7 @@ export default function TripDetailPage() {
       const newCover =
         newPhotos.length > 0
           ? (evt.coverImage === currentPhotos[photoIdx] ? newPhotos[0] : evt.coverImage)
-          : "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=600&q=80";
+          : "";
       return {
         ...evt,
         photos: newPhotos,
@@ -1339,11 +1336,22 @@ export default function TripDetailPage() {
                         </svg>
                       </div>
 
-                      <img
-                        src={evt.coverImage}
-                        alt={evt.title}
-                        className="w-[84px] h-[58px] sm:w-[96px] sm:h-[64px] rounded-[12px] object-cover shrink-0 shadow-sm"
-                      />
+                      {(() => {
+                        const headerImg = evt.coverImage || (evt.photos && evt.photos[0]) || "";
+                        return headerImg ? (
+                          <img
+                            src={headerImg}
+                            alt={evt.title}
+                            className="w-[84px] h-[58px] sm:w-[96px] sm:h-[64px] rounded-[12px] object-cover shrink-0 shadow-sm"
+                          />
+                        ) : (
+                          <div className="w-[84px] h-[58px] sm:w-[96px] sm:h-[64px] rounded-[12px] bg-[#f1f5f9] border border-[#e2e8f0] grid place-items-center shrink-0 shadow-sm text-[#94a3b8]">
+                            <svg className="w-6 h-6 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        );
+                      })()}
 
                       <div className="min-w-0">
                         <h3 className="text-[16.5px] sm:text-[17.5px] font-bold text-[#172554] truncate tracking-tight">
@@ -1471,7 +1479,9 @@ export default function TripDetailPage() {
                         const allPhotos =
                           evt.photos && evt.photos.length > 0
                             ? evt.photos
-                            : [evt.coverImage];
+                            : evt.coverImage
+                            ? [evt.coverImage]
+                            : [];
 
                         return (
                           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start pt-1">
@@ -1492,30 +1502,34 @@ export default function TripDetailPage() {
                                 <span>Photos ({allPhotos.length})</span>
                               </div>
 
-                              <div className="grid grid-cols-3 gap-2.5">
-                                {allPhotos.map((photo, pIdx) => (
-                                  <div
-                                    key={pIdx}
-                                    onClick={() => window.open(photo, "_blank")}
-                                    className="relative aspect-video rounded-[10px] overflow-hidden group/img shadow-sm border border-[#e6ecf4] bg-slate-100 cursor-pointer"
-                                    title="Click to view full photo"
-                                  >
-                                    <img
-                                      src={photo}
-                                      alt={`Photo ${pIdx + 1}`}
-                                      className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-300"
-                                    />
-                                    <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
-                                      <span className="w-7 h-7 rounded-full bg-white/95 text-slate-700 grid place-items-center shadow">
-                                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                          <circle cx="12" cy="12" r="3" />
-                                        </svg>
-                                      </span>
+                              {allPhotos.length > 0 ? (
+                                <div className="grid grid-cols-3 gap-2.5">
+                                  {allPhotos.map((photo, pIdx) => (
+                                    <div
+                                      key={pIdx}
+                                      onClick={() => window.open(photo, "_blank")}
+                                      className="relative aspect-video rounded-[10px] overflow-hidden group/img shadow-sm border border-[#e6ecf4] bg-slate-100 cursor-pointer"
+                                      title="Click to view full photo"
+                                    >
+                                      <img
+                                        src={photo}
+                                        alt={`Photo ${pIdx + 1}`}
+                                        className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-300"
+                                      />
+                                      <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                                        <span className="w-7 h-7 rounded-full bg-white/95 text-slate-700 grid place-items-center shadow">
+                                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                            <circle cx="12" cy="12" r="3" />
+                                          </svg>
+                                        </span>
+                                      </div>
                                     </div>
-                                  </div>
-                                ))}
-                              </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-[12.5px] text-[#94a3b8] italic">No photos added.</p>
+                              )}
                             </div>
 
                             {/* Column 2: Additional Notes (Occupies 4 columns) */}
@@ -2065,10 +2079,23 @@ export default function TripDetailPage() {
                     onChange={(e) => setNewEvent({ ...newEvent, coverImage: e.target.value })}
                     className="flex-1 p-2.5 border border-[#dfe6ee] rounded-[9px] text-[13.5px] text-[#1e293b] outline-none focus:border-[#2563eb]"
                   />
+                  {newEvent.coverImage && (
+                    <button
+                      type="button"
+                      onClick={() => setNewEvent({ ...newEvent, coverImage: "" })}
+                      className="px-3 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[9px] text-[13px] font-semibold flex items-center gap-1 transition shrink-0"
+                      title="Clear cover image"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
+                      Clear
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => coverFileInputRef.current?.click()}
-                    className="px-3.5 py-2.5 border border-[#cbd5e1] hover:border-[#2563eb] rounded-[9px] text-[13px] font-semibold text-[#334155] bg-white hover:bg-[#f1f5f9] flex items-center gap-1.5 whitespace-nowrap transition"
+                    className="px-3.5 py-2.5 border border-[#cbd5e1] hover:border-[#2563eb] rounded-[9px] text-[13px] font-semibold text-[#334155] bg-white hover:bg-[#f1f5f9] flex items-center gap-1.5 whitespace-nowrap transition shrink-0"
                   >
                     <svg className="w-4 h-4 text-[#2563eb]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -2086,8 +2113,28 @@ export default function TripDetailPage() {
                   />
                 </div>
                 {newEvent.coverImage && (
-                  <div className="relative w-20 h-14 rounded-lg overflow-hidden border border-[#cbd5e1] mt-1">
-                    <img src={newEvent.coverImage} alt="Cover preview" className="w-full h-full object-cover" />
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <div className="relative w-20 h-14 rounded-lg overflow-hidden border border-[#cbd5e1] group">
+                      <img src={newEvent.coverImage} alt="Cover preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setNewEvent({ ...newEvent, coverImage: "" })}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] font-bold shadow hover:bg-red-700 transition cursor-pointer"
+                        title="Remove cover photo"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setNewEvent({ ...newEvent, coverImage: "" })}
+                      className="text-[12px] text-red-600 hover:text-red-700 font-medium hover:underline flex items-center gap-1"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                      Remove Cover
+                    </button>
                   </div>
                 )}
               </div>
@@ -2142,7 +2189,8 @@ export default function TripDetailPage() {
                         <button
                           type="button"
                           onClick={() => handleRemovePhoto(idx)}
-                          className="absolute inset-0 bg-black/50 text-white opacity-0 group-hover:opacity-100 grid place-items-center transition text-xs font-bold"
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] font-bold shadow hover:bg-red-700 transition cursor-pointer"
+                          title="Delete photo"
                         >
                           ✕
                         </button>
@@ -2807,10 +2855,23 @@ export default function TripDetailPage() {
                     onChange={(e) => setEditEventData({ ...editEventData, coverImage: e.target.value })}
                     className="flex-1 p-2.5 border border-[#dfe6ee] rounded-[9px] text-[13.5px] text-[#1e293b] outline-none focus:border-[#2563eb]"
                   />
+                  {editEventData.coverImage && (
+                    <button
+                      type="button"
+                      onClick={() => setEditEventData({ ...editEventData, coverImage: "" })}
+                      className="px-3 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[9px] text-[13px] font-semibold flex items-center gap-1 transition shrink-0"
+                      title="Clear cover image"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
+                      Clear
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => editCoverFileInputRef.current?.click()}
-                    className="px-3.5 py-2.5 border border-[#cbd5e1] hover:border-[#2563eb] rounded-[9px] text-[13px] font-semibold text-[#334155] bg-white hover:bg-[#f1f5f9] flex items-center gap-1.5 whitespace-nowrap transition"
+                    className="px-3.5 py-2.5 border border-[#cbd5e1] hover:border-[#2563eb] rounded-[9px] text-[13px] font-semibold text-[#334155] bg-white hover:bg-[#f1f5f9] flex items-center gap-1.5 whitespace-nowrap transition shrink-0"
                   >
                     <svg className="w-4 h-4 text-[#2563eb]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -2828,8 +2889,28 @@ export default function TripDetailPage() {
                   />
                 </div>
                 {editEventData.coverImage && (
-                  <div className="relative w-20 h-14 rounded-lg overflow-hidden border border-[#cbd5e1] mt-1">
-                    <img src={editEventData.coverImage} alt="Cover preview" className="w-full h-full object-cover" />
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <div className="relative w-20 h-14 rounded-lg overflow-hidden border border-[#cbd5e1] group">
+                      <img src={editEventData.coverImage} alt="Cover preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setEditEventData({ ...editEventData, coverImage: "" })}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] font-bold shadow hover:bg-red-700 transition cursor-pointer"
+                        title="Remove cover photo"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditEventData({ ...editEventData, coverImage: "" })}
+                      className="text-[12px] text-red-600 hover:text-red-700 font-medium hover:underline flex items-center gap-1"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                      Remove Cover
+                    </button>
                   </div>
                 )}
               </div>
@@ -2884,7 +2965,7 @@ export default function TripDetailPage() {
                         <button
                           type="button"
                           onClick={() => handleRemoveEditPhoto(idx)}
-                          className="absolute inset-0 bg-red-600/70 text-white opacity-0 group-hover:opacity-100 grid place-items-center transition text-xs font-bold"
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] font-bold shadow hover:bg-red-700 transition cursor-pointer"
                           title="Delete photo"
                         >
                           ✕
