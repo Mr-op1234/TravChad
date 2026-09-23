@@ -565,9 +565,9 @@ export default function RichTextEditor({
   };
 
   return (
-    <div className="border border-[#cbd7ea] rounded-[14px] bg-white overflow-hidden shadow-sm focus-within:border-[#2563eb] focus-within:ring-2 focus-within:ring-[#2563eb]/15 transition-all">
+    <div className="border border-[#cbd7ea] rounded-[14px] bg-white shadow-sm focus-within:border-[#2563eb] focus-within:ring-2 focus-within:ring-[#2563eb]/15 transition-all relative">
       {/* ================= MS WORD STYLE TOOLBAR ================= */}
-      <div className="bg-[#f8fafc] border-b border-[#e2e8f0] p-2 flex flex-wrap items-center gap-1 text-[13px] select-none">
+      <div className="bg-[#f8fafc] border-b border-[#e2e8f0] p-2 flex flex-wrap items-center gap-1 text-[13px] select-none rounded-t-[13px]">
         {/* Undo / Redo */}
         <div className="flex items-center gap-0.5 pr-1.5 border-r border-[#e2e8f0]">
           <button
@@ -703,10 +703,10 @@ export default function RichTextEditor({
 
             {showColorPalette && (
               <div
-                className="absolute top-8 left-0 z-50 bg-white p-2.5 rounded-[12px] shadow-[0_10px_28px_rgba(15,23,42,0.18)] border border-[#e2e8f0] w-[150px] animate-[pop_0.15s_ease]"
+                className="absolute top-full mt-1.5 right-0 sm:left-0 z-50 bg-white p-3 rounded-[12px] shadow-[0_12px_32px_rgba(15,23,42,0.22)] border border-[#cbd5e1] w-[170px] min-w-[170px] animate-[pop_0.15s_ease]"
                 onMouseDown={(e) => e.stopPropagation()}
               >
-                <div className="text-[11px] font-semibold text-[#64748b] mb-1.5">Text Color</div>
+                <div className="text-[11.5px] font-bold text-[#475569] mb-2">Text Color</div>
                 <div className="grid grid-cols-3 gap-1.5">
                   {TEXT_COLORS.map((tc) => (
                     <button
@@ -716,7 +716,7 @@ export default function RichTextEditor({
                         e.preventDefault();
                         applyTextColor(tc.color);
                       }}
-                      className="w-8 h-6 rounded-[6px] border border-slate-200 transition hover:scale-110 flex items-center justify-center"
+                      className="w-11 h-7 rounded-[6px] border border-slate-300 transition hover:scale-105 flex items-center justify-center shadow-xs"
                       style={{ backgroundColor: tc.color }}
                       title={tc.label}
                     />
@@ -750,10 +750,10 @@ export default function RichTextEditor({
 
             {showHighlightPalette && (
               <div
-                className="absolute top-8 left-0 z-50 bg-white p-2.5 rounded-[12px] shadow-[0_10px_28px_rgba(15,23,42,0.18)] border border-[#e2e8f0] w-[150px] animate-[pop_0.15s_ease]"
+                className="absolute top-full mt-1.5 right-0 sm:left-0 z-50 bg-white p-3 rounded-[12px] shadow-[0_12px_32px_rgba(15,23,42,0.22)] border border-[#cbd5e1] w-[170px] min-w-[170px] animate-[pop_0.15s_ease]"
                 onMouseDown={(e) => e.stopPropagation()}
               >
-                <div className="text-[11px] font-semibold text-[#64748b] mb-1.5">Highlight</div>
+                <div className="text-[11.5px] font-bold text-[#475569] mb-2">Highlight</div>
                 <div className="grid grid-cols-3 gap-1.5">
                   {HIGHLIGHT_COLORS.map((hc) => (
                     <button
@@ -763,7 +763,7 @@ export default function RichTextEditor({
                         e.preventDefault();
                         applyHighlightColor(hc.color);
                       }}
-                      className="w-8 h-6 rounded-[6px] border border-slate-200 transition hover:scale-110 flex items-center justify-center text-[10px] text-slate-500"
+                      className="w-11 h-7 rounded-[6px] border border-slate-300 transition hover:scale-105 flex items-center justify-center text-[10.5px] font-medium text-slate-600 shadow-xs"
                       style={{ backgroundColor: hc.color }}
                       title={hc.label}
                     >
@@ -1075,122 +1075,6 @@ export default function RichTextEditor({
               >
                 Insert Table
               </button>
-            </div>
-          )}
-        </div>
-
-        {/* ================= INSERT IMAGE BUTTON ================= */}
-        <div className="relative pl-1">
-          <button
-            type="button"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              setShowImageMenu(!showImageMenu);
-              setShowTableMenu(false);
-              setShowColorPalette(false);
-              setShowHighlightPalette(false);
-            }}
-            title="Insert Image (URL or Upload)"
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[12px] font-semibold text-[#334155] hover:bg-white hover:text-[#2563eb] hover:shadow-xs transition"
-          >
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <polyline points="21 15 16 10 5 21" />
-            </svg>
-            <span>Image</span>
-          </button>
-
-          {showImageMenu && (
-            <div
-              className="absolute top-8 left-0 z-50 bg-white p-3.5 rounded-[14px] shadow-[0_12px_32px_rgba(15,23,42,0.2)] border border-[#cbd5e1] w-[260px] text-[#1e293b] animate-[pop_0.15s_ease]"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <div className="text-[13px] font-bold text-[#0f172a] mb-2.5 pb-1.5 border-b border-slate-100 flex items-center justify-between">
-                <span>Insert Image</span>
-                <button
-                  type="button"
-                  onClick={() => setShowImageMenu(false)}
-                  className="text-slate-400 hover:text-slate-600 text-xs"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Option 1: URL */}
-              <div className="space-y-2 mb-3">
-                <label className="block text-[11px] font-semibold text-[#64748b]">
-                  Paste Image URL:
-                </label>
-                <div className="flex gap-1.5">
-                  <input
-                    type="url"
-                    placeholder="https://..."
-                    value={imageUrlInput}
-                    onChange={(e) => {
-                      setImageUrlInput(e.target.value);
-                      if (e.target.value.trim().startsWith("http")) {
-                        setImagePreviewUrl(e.target.value.trim());
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        insertImage(imageUrlInput.trim());
-                      }
-                    }}
-                    className="flex-1 p-1.5 text-[12px] border border-slate-300 rounded-[6px] outline-none focus:border-[#2563eb]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => insertImage(imageUrlInput.trim())}
-                    disabled={!imageUrlInput.trim()}
-                    className="px-2.5 py-1.5 rounded-[6px] bg-[#2563eb] text-white text-[11.5px] font-semibold hover:bg-[#1d4ed8] disabled:opacity-50 transition"
-                  >
-                    Insert
-                  </button>
-                </div>
-
-                {imagePreviewUrl && (
-                  <div className="relative aspect-video rounded-[8px] overflow-hidden border border-slate-200 mt-1 max-h-[100px]">
-                    <img
-                      src={imagePreviewUrl}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                      onError={() => setImagePreviewUrl("")}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="relative flex py-1 items-center">
-                <div className="flex-grow border-t border-gray-200"></div>
-                <span className="flex-shrink mx-2 text-gray-400 text-[10px] uppercase font-medium">Or</span>
-                <div className="flex-grow border-t border-gray-200"></div>
-              </div>
-
-              {/* Option 2: Upload from Device */}
-              <div className="mt-2">
-                <button
-                  type="button"
-                  onClick={() => imageFileInputRef.current?.click()}
-                  className="w-full py-2 px-3 border border-dashed border-[#cbd5e1] hover:border-[#2563eb] rounded-[8px] flex items-center justify-center gap-1.5 text-[#334155] hover:text-[#2563eb] font-semibold text-[12px] transition bg-[#f8fafc]"
-                >
-                  <svg className="w-3.5 h-3.5 text-[#2563eb]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="17 8 12 3 7 8" />
-                    <line x1="12" y1="3" x2="12" y2="15" />
-                  </svg>
-                  Upload from Device
-                </button>
-                <input
-                  type="file"
-                  ref={imageFileInputRef}
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleEditorImageFileUpload}
-                />
-              </div>
             </div>
           )}
         </div>

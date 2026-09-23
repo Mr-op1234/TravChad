@@ -55,11 +55,13 @@ export default function TripDetailPage() {
     notes: "",
     coverImage: "",
     photos: [] as string[],
+    attachedDocs: [] as TripDocument[],
   });
 
   const [newPhotoInputUrl, setNewPhotoInputUrl] = useState("");
   const coverFileInputRef = useRef<HTMLInputElement>(null);
   const photosFileInputRef = useRef<HTMLInputElement>(null);
+  const addEventDocFileInputRef = useRef<HTMLInputElement>(null);
 
   // Information and documents modal state
   const [isDocsModalOpen, setIsDocsModalOpen] = useState(false);
@@ -96,10 +98,12 @@ export default function TripDetailPage() {
     notes: "",
     coverImage: "",
     photos: [] as string[],
+    attachedDocs: [] as TripDocument[],
   });
   const [editPhotoInputUrl, setEditPhotoInputUrl] = useState("");
   const editCoverFileInputRef = useRef<HTMLInputElement>(null);
   const editPhotosFileInputRef = useRef<HTMLInputElement>(null);
+  const editEventDocFileInputRef = useRef<HTMLInputElement>(null);
 
   // Add Photo to specific Card Modal State
   const [cardPhotoModalEventId, setCardPhotoModalEventId] = useState<string | null>(null);
@@ -292,6 +296,96 @@ export default function TripDetailPage() {
     }));
   };
 
+  const processUploadedDoc = async (file: File, eventTitle?: string): Promise<TripDocument> => {
+    let dataUrl = "";
+    if (file.type.startsWith("image/")) {
+      dataUrl = await compressImageFile(file, 1400, 1000, 0.78);
+    } else {
+      dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => resolve(event.target?.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    const sizeStr =
+      file.size > 1024 * 1024
+        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+        : `${Math.round(file.size / 1024)} KB`;
+
+    const nameLower = file.name.toLowerCase();
+    let type: TripDocument["type"] = "other";
+    let colorScheme: TripDocument["colorScheme"] = "blue";
+
+    if (nameLower.includes("flight") || nameLower.includes("boarding") || nameLower.includes("ticket") || nameLower.includes("air")) {
+      type = "flight";
+      colorScheme = "sky";
+    } else if (nameLower.includes("hotel") || nameLower.includes("stay") || nameLower.includes("resort") || nameLower.includes("booking") || nameLower.includes("airbnb")) {
+      type = "hotel";
+      colorScheme = "green";
+    } else if (nameLower.includes("insurance") || nameLower.includes("policy") || nameLower.includes("claim")) {
+      type = "insurance";
+      colorScheme = "red";
+    } else if (nameLower.includes("passport") || nameLower.includes("id")) {
+      type = "passport";
+      colorScheme = "blue";
+    } else if (nameLower.includes("visa")) {
+      type = "visa";
+      colorScheme = "purple";
+    }
+
+    return {
+      id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      type,
+      title: file.name.replace(/\.[^/.]+$/, ""),
+      description: `Document for event: ${eventTitle || newEvent.title || "Itinerary event"}`,
+      fileName: file.name,
+      fileSize: sizeStr,
+      fileUrl: dataUrl,
+      colorScheme,
+    };
+  };
+
+  const handleAddEventDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    try {
+      const docs: TripDocument[] = [];
+      for (const file of Array.from(files)) {
+        const doc = await processUploadedDoc(file, newEvent.title);
+        docs.push(doc);
+      }
+      setNewEvent((prev) => ({
+        ...prev,
+        attachedDocs: [...(prev.attachedDocs || []), ...docs],
+      }));
+      showToast(`${docs.length} document(s) attached`);
+    } catch (err) {
+      console.error("Document upload error:", err);
+      showToast("Failed to upload document");
+    }
+    e.target.value = "";
+  };
+
+  const handleRemoveAddEventDoc = (docId: string) => {
+    setNewEvent((prev) => ({
+      ...prev,
+      attachedDocs: (prev.attachedDocs || []).filter((d) => d.id !== docId),
+    }));
+  };
+
+  const handleAttachExistingDocToAddEvent = (docId: string) => {
+    const found = (currentTrip?.documents || []).find((d) => d.id === docId);
+    if (!found) return;
+    if ((newEvent.attachedDocs || []).some((d) => d.id === docId)) return;
+    setNewEvent((prev) => ({
+      ...prev,
+      attachedDocs: [...(prev.attachedDocs || []), found],
+    }));
+    showToast(`Linked "${found.title}"`);
+  };
+
   const handleAddEventSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentTrip || !newEvent.title || !newEvent.location) return;
@@ -328,9 +422,27 @@ export default function TripDetailPage() {
     };
 
     const updatedEvents = [...currentTrip.events, createdEvent];
+
+    // Merge attached documents and assign eventId
+    const existingDocs = currentTrip.documents || [];
+    const attachedWithId = (newEvent.attachedDocs || []).map((d) => ({
+      ...d,
+      eventId: createdEvent.id,
+    }));
+    const updatedDocs = [...existingDocs];
+    attachedWithId.forEach((ad) => {
+      const idx = updatedDocs.findIndex((d) => d.id === ad.id);
+      if (idx >= 0) {
+        updatedDocs[idx] = ad;
+      } else {
+        updatedDocs.push(ad);
+      }
+    });
+
     const updatedTrip: TripData = {
       ...currentTrip,
       events: updatedEvents,
+      documents: updatedDocs,
     };
 
     const updatedAllTrips = trips.map((t) =>
@@ -358,6 +470,7 @@ export default function TripDetailPage() {
       notes: "",
       coverImage: "",
       photos: [],
+      attachedDocs: [],
     });
   };
 
@@ -440,6 +553,9 @@ export default function TripDetailPage() {
   // Event Editing
   const handleOpenEditEvent = (evt: EventItem, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    const existingAttached = (currentTrip?.documents || []).filter(
+      (d) => d.eventId === evt.id
+    );
     setEditEventData({
       id: evt.id,
       title: evt.title,
@@ -452,6 +568,7 @@ export default function TripDetailPage() {
       notes: (evt.notes || []).join("\n"),
       coverImage: evt.coverImage || "",
       photos: [...(evt.photos || [])],
+      attachedDocs: existingAttached,
     });
     setEditPhotoInputUrl("");
     setIsEditEventOpen(true);
@@ -540,6 +657,45 @@ export default function TripDetailPage() {
     }));
   };
 
+  const handleEditEventDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    try {
+      const docs: TripDocument[] = [];
+      for (const file of Array.from(files)) {
+        const doc = await processUploadedDoc(file, editEventData.title);
+        docs.push(doc);
+      }
+      setEditEventData((prev) => ({
+        ...prev,
+        attachedDocs: [...(prev.attachedDocs || []), ...docs],
+      }));
+      showToast(`${docs.length} document(s) attached`);
+    } catch (err) {
+      console.error("Edit event document upload error:", err);
+      showToast("Failed to upload document");
+    }
+    e.target.value = "";
+  };
+
+  const handleRemoveEditEventDoc = (docId: string) => {
+    setEditEventData((prev) => ({
+      ...prev,
+      attachedDocs: (prev.attachedDocs || []).filter((d) => d.id !== docId),
+    }));
+  };
+
+  const handleAttachExistingDocToEditEvent = (docId: string) => {
+    const found = (currentTrip?.documents || []).find((d) => d.id === docId);
+    if (!found) return;
+    if ((editEventData.attachedDocs || []).some((d) => d.id === docId)) return;
+    setEditEventData((prev) => ({
+      ...prev,
+      attachedDocs: [...(prev.attachedDocs || []), found],
+    }));
+    showToast(`Linked "${found.title}"`);
+  };
+
   const handleSaveEditEvent = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentTrip || !editEventData.id || !editEventData.title || !editEventData.location) return;
@@ -569,7 +725,44 @@ export default function TripDetailPage() {
       };
     });
 
-    updateTripEvents(updatedEvents);
+    // Synchronize attached documents with eventId
+    const currentDocs = currentTrip.documents || [];
+    const attachedIds = new Set((editEventData.attachedDocs || []).map((d) => d.id));
+
+    // For any documents previously linked to this event but removed from attachedDocs, unlink them
+    let updatedDocs = currentDocs.map((d) => {
+      if (d.eventId === editEventData.id && !attachedIds.has(d.id)) {
+        const copy = { ...d };
+        delete copy.eventId;
+        return copy;
+      }
+      return d;
+    });
+
+    // For documents in attachedDocs, ensure eventId is set and present in updatedDocs
+    (editEventData.attachedDocs || []).forEach((ad) => {
+      const idx = updatedDocs.findIndex((d) => d.id === ad.id);
+      const withEventId: TripDocument = { ...ad, eventId: editEventData.id };
+      if (idx >= 0) {
+        updatedDocs[idx] = withEventId;
+      } else {
+        updatedDocs.push(withEventId);
+      }
+    });
+
+    const updatedTrip: TripData = {
+      ...currentTrip,
+      events: updatedEvents,
+      documents: updatedDocs,
+    };
+
+    const updatedAllTrips = trips.map((t) =>
+      t.id === currentTrip.id ? updatedTrip : t
+    );
+    setTrips(updatedAllTrips);
+    setCurrentTrip(updatedTrip);
+    saveStoredTrips(updatedAllTrips);
+
     setIsEditEventOpen(false);
     showToast("Event updated successfully!");
   };
@@ -2013,7 +2206,7 @@ export default function TripDetailPage() {
           onClick={() => setIsAddEventOpen(false)}
         >
           <div
-            className="bg-white rounded-[20px] w-full max-w-[580px] max-h-[92vh] overflow-auto shadow-[0_24px_64px_rgba(2,8,23,0.35)] animate-[pop_0.2s_ease]"
+            className="bg-white rounded-[20px] w-full max-w-[850px] max-h-[92vh] overflow-auto shadow-[0_24px_64px_rgba(2,8,23,0.35)] animate-[pop_0.2s_ease]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-5 border-b border-[#eef2f7]">
@@ -2256,6 +2449,97 @@ export default function TripDetailPage() {
                 />
               </div>
 
+              {/* Attached Documents */}
+              <div className="space-y-2.5 p-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-[14px]">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <label className="block text-[13px] font-bold text-[#1e293b]">
+                      Attach Documents
+                    </label>
+                    <p className="text-[11.5px] text-[#64748b]">
+                      Attach tickets, vouchers, booking PDFs, or documents to this itinerary card
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {currentTrip.documents && currentTrip.documents.length > 0 && (
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleAttachExistingDocToAddEvent(e.target.value);
+                            e.target.value = "";
+                          }
+                        }}
+                        defaultValue=""
+                        className="text-[12px] bg-white border border-[#cbd5e1] text-[#334155] rounded-[8px] px-2.5 py-1.5 outline-none hover:border-[#2563eb]"
+                      >
+                        <option value="" disabled>Link trip doc...</option>
+                        {currentTrip.documents.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.title} ({d.fileName || d.type})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => addEventDocFileInputRef.current?.click()}
+                      className="px-3 py-1.5 bg-white border border-[#2563eb] text-[#2563eb] hover:bg-[#eff6ff] rounded-[8px] text-[12px] font-semibold flex items-center gap-1.5 transition shadow-xs"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                      Upload File
+                    </button>
+                    <input
+                      type="file"
+                      ref={addEventDocFileInputRef}
+                      multiple
+                      className="hidden"
+                      onChange={handleAddEventDocUpload}
+                    />
+                  </div>
+                </div>
+
+                {newEvent.attachedDocs && newEvent.attachedDocs.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    {newEvent.attachedDocs.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="flex items-center justify-between p-2.5 bg-white border border-[#cbd5e1] rounded-[10px] shadow-xs"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="w-7 h-7 rounded-[7px] bg-[#eff6ff] text-[#2563eb] grid place-items-center shrink-0 text-xs font-bold">
+                            📄
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[12.5px] font-bold text-[#1e293b] truncate">
+                              {doc.title}
+                            </p>
+                            <p className="text-[11px] text-[#64748b] truncate">
+                              {doc.fileName || doc.type} {doc.fileSize ? `• ${doc.fileSize}` : ""}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAddEventDoc(doc.id)}
+                          className="w-6 h-6 rounded-md hover:bg-[#fee2e2] text-[#94a3b8] hover:text-[#dc2626] grid place-items-center transition shrink-0 ml-1"
+                          title="Remove document"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11.5px] text-[#94a3b8] italic pt-0.5">
+                    No documents attached to this event yet.
+                  </p>
+                )}
+              </div>
+
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
@@ -2286,7 +2570,7 @@ export default function TripDetailPage() {
           }}
         >
           <div
-            className="bg-white rounded-[24px] w-full max-w-[500px] max-h-[92vh] flex flex-col shadow-[0_24px_64px_rgba(2,8,23,0.35)] overflow-hidden animate-[pop_0.2s_ease]"
+            className="bg-white rounded-[24px] w-full max-w-[660px] max-h-[92vh] flex flex-col shadow-[0_24px_64px_rgba(2,8,23,0.35)] overflow-hidden animate-[pop_0.2s_ease]"
             onClick={(e) => {
               e.stopPropagation();
               setActiveDocMenuId(null);
@@ -2406,11 +2690,11 @@ export default function TripDetailPage() {
                             {doc.title}
                           </h4>
                           {doc.eventId && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#eff6ff] text-[#2563eb] border border-[#bfdbfe]">
-                              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11.5px] font-bold bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe]">
+                              <svg className="w-3 h-3 text-[#2563eb]" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
                               </svg>
-                              Card: {currentTrip.events.find((e) => e.id === doc.eventId)?.title || "Assigned"}
+                              Associated with: {currentTrip.events.find((e) => e.id === doc.eventId)?.title || "Itinerary Event"}
                             </span>
                           )}
                         </div>
@@ -2671,7 +2955,7 @@ export default function TripDetailPage() {
           onClick={() => setIsEditEventOpen(false)}
         >
           <div
-            className="bg-white rounded-[20px] w-full max-w-[620px] max-h-[92vh] overflow-auto shadow-[0_24px_64px_rgba(2,8,23,0.35)] animate-[pop_0.2s_ease]"
+            className="bg-white rounded-[20px] w-full max-w-[850px] max-h-[92vh] overflow-auto shadow-[0_24px_64px_rgba(2,8,23,0.35)] animate-[pop_0.2s_ease]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-5 border-b border-[#eef2f7]">
@@ -2905,6 +3189,97 @@ export default function TripDetailPage() {
                   onChange={(e) => setEditEventData({ ...editEventData, notes: e.target.value })}
                   className="w-full p-2.5 border border-[#dfe6ee] rounded-[9px] text-[13.5px] text-[#1e293b] outline-none focus:border-[#2563eb] resize-y"
                 />
+              </div>
+
+              {/* Attached Documents */}
+              <div className="space-y-2.5 p-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-[14px]">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <label className="block text-[13px] font-bold text-[#1e293b]">
+                      Attach Documents
+                    </label>
+                    <p className="text-[11.5px] text-[#64748b]">
+                      Attach tickets, vouchers, booking PDFs, or documents to this itinerary card
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {currentTrip.documents && currentTrip.documents.length > 0 && (
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleAttachExistingDocToEditEvent(e.target.value);
+                            e.target.value = "";
+                          }
+                        }}
+                        defaultValue=""
+                        className="text-[12px] bg-white border border-[#cbd5e1] text-[#334155] rounded-[8px] px-2.5 py-1.5 outline-none hover:border-[#2563eb]"
+                      >
+                        <option value="" disabled>Link trip doc...</option>
+                        {currentTrip.documents.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.title} ({d.fileName || d.type})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => editEventDocFileInputRef.current?.click()}
+                      className="px-3 py-1.5 bg-white border border-[#2563eb] text-[#2563eb] hover:bg-[#eff6ff] rounded-[8px] text-[12px] font-semibold flex items-center gap-1.5 transition shadow-xs"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                      Upload File
+                    </button>
+                    <input
+                      type="file"
+                      ref={editEventDocFileInputRef}
+                      multiple
+                      className="hidden"
+                      onChange={handleEditEventDocUpload}
+                    />
+                  </div>
+                </div>
+
+                {editEventData.attachedDocs && editEventData.attachedDocs.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    {editEventData.attachedDocs.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="flex items-center justify-between p-2.5 bg-white border border-[#cbd5e1] rounded-[10px] shadow-xs"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="w-7 h-7 rounded-[7px] bg-[#eff6ff] text-[#2563eb] grid place-items-center shrink-0 text-xs font-bold">
+                            📄
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[12.5px] font-bold text-[#1e293b] truncate">
+                              {doc.title}
+                            </p>
+                            <p className="text-[11px] text-[#64748b] truncate">
+                              {doc.fileName || doc.type} {doc.fileSize ? `• ${doc.fileSize}` : ""}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveEditEventDoc(doc.id)}
+                          className="w-6 h-6 rounded-md hover:bg-[#fee2e2] text-[#94a3b8] hover:text-[#dc2626] grid place-items-center transition shrink-0 ml-1"
+                          title="Remove document"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11.5px] text-[#94a3b8] italic pt-0.5">
+                    No documents attached to this event yet.
+                  </p>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 pt-2 border-t border-[#eef2f7]">
