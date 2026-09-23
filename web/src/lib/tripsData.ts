@@ -361,7 +361,23 @@ export function saveStoredTrips(trips: TripData[]): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(trips));
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("Failed to save trips", err);
+    const isQuota =
+      err instanceof DOMException &&
+      (err.name === "QuotaExceededError" ||
+        err.code === 22 ||
+        err.code === 1014 ||
+        err.name === "NS_ERROR_DOM_QUOTA_REACHED");
+    if (isQuota) {
+      console.warn("LocalStorage quota exceeded. Please use image URLs or compress images.");
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("travchad_storage_quota_warning", {
+            detail: { message: "Storage quota reached. Consider using image URLs for very large galleries." },
+          })
+        );
+      }
+    }
   }
 }

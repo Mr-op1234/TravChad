@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect, useState, useCallback } from "react";
+import { compressImageFile, compressDataUrl } from "@/lib/imageUtils";
 
 interface RichTextEditorProps {
   value: string;
@@ -131,26 +132,37 @@ export default function RichTextEditor({
   const [imagePreviewUrl, setImagePreviewUrl] = useState("");
   const imageFileInputRef = useRef<HTMLInputElement>(null);
 
-  const insertImage = (url: string) => {
+  const insertImage = async (url: string) => {
     if (!url.trim()) return;
-    const imgHtml = `<p><img src="${url.trim()}" alt="Inserted image" style="max-width: 100%; height: auto; border-radius: 8px; margin: 12px 0; display: block;" /></p><p><br></p>`;
-    editorRef.current?.focus();
-    document.execCommand("insertHTML", false, imgHtml);
-    setShowImageMenu(false);
-    setImageUrlInput("");
-    setImagePreviewUrl("");
-    emitChange();
+    try {
+      const cleanUrl = await compressDataUrl(url.trim(), 1200, 800, 0.75);
+      const imgHtml = `<p><img src="${cleanUrl}" alt="Inserted image" style="max-width: 100%; height: auto; border-radius: 8px; margin: 12px 0; display: block;" /></p><p><br></p>`;
+      editorRef.current?.focus();
+      document.execCommand("insertHTML", false, imgHtml);
+      setShowImageMenu(false);
+      setImageUrlInput("");
+      setImagePreviewUrl("");
+      emitChange();
+    } catch {
+      const imgHtml = `<p><img src="${url.trim()}" alt="Inserted image" style="max-width: 100%; height: auto; border-radius: 8px; margin: 12px 0; display: block;" /></p><p><br></p>`;
+      editorRef.current?.focus();
+      document.execCommand("insertHTML", false, imgHtml);
+      setShowImageMenu(false);
+      setImageUrlInput("");
+      setImagePreviewUrl("");
+      emitChange();
+    }
   };
 
-  const handleEditorImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEditorImageFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target?.result as string;
-      insertImage(dataUrl);
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImageFile(file, 1200, 800, 0.75);
+      await insertImage(compressed);
+    } catch (err) {
+      console.error("Failed to compress image", err);
+    }
     e.target.value = "";
   };
 

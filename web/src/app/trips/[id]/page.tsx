@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { TripData, EventItem, TripDocument, getStoredTrips, saveStoredTrips } from "@/lib/tripsData";
+import { compressImageFile, compressDataUrl } from "@/lib/imageUtils";
 import RichTextEditor from "@/components/RichTextEditor";
 
 const PRESET_BANNERS = [
@@ -137,6 +138,15 @@ export default function TripDetailPage() {
     }
   }, [tripId]);
 
+  useEffect(() => {
+    const handleQuotaWarning = (e: Event) => {
+      const custom = e as CustomEvent;
+      showToast(custom.detail?.message || "Storage quota reached. Consider using image URLs.");
+    };
+    window.addEventListener("travchad_storage_quota_warning", handleQuotaWarning);
+    return () => window.removeEventListener("travchad_storage_quota_warning", handleQuotaWarning);
+  }, []);
+
   // Node.js engine duration calculation via API
   const calculateDurationWithNode = async (start: string, end: string) => {
     if (!start || !end) return;
@@ -199,25 +209,26 @@ export default function TripDetailPage() {
   };
 
   // Banner image upload from local file
-  const handleBannerFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBannerFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !currentTrip) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      const dataUrl = await compressImageFile(file, 1600, 1000, 0.78);
       setBannerPreviewUrl(dataUrl);
-      updateBannerImage(dataUrl);
-    };
-    reader.readAsDataURL(file);
+      await updateBannerImage(dataUrl);
+    } catch (err) {
+      console.error("Banner upload error:", err);
+    }
     e.target.value = "";
   };
 
-  const updateBannerImage = (imageUrl: string) => {
+  const updateBannerImage = async (imageUrl: string) => {
     if (!currentTrip || !imageUrl) return;
+    const finalUrl = await compressDataUrl(imageUrl, 1600, 1000, 0.78);
     const updatedTrip: TripData = {
       ...currentTrip,
-      heroImage: imageUrl,
-      image: imageUrl,
+      heroImage: finalUrl,
+      image: finalUrl,
     };
     const updatedList = trips.map((t) => (t.id === currentTrip.id ? updatedTrip : t));
     setTrips(updatedList);
@@ -230,35 +241,36 @@ export default function TripDetailPage() {
   };
 
   // Event Cover Image upload from local file
-  const handleCoverFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      const dataUrl = await compressImageFile(file, 1200, 800, 0.75);
       setNewEvent((prev) => ({ ...prev, coverImage: dataUrl }));
       showToast("Cover image uploaded");
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Cover upload error:", err);
+    }
     e.target.value = "";
   };
 
   // Event Photos upload from local file(s)
-  const handlePhotosFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotosFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const dataUrl = event.target?.result as string;
-        setNewEvent((prev) => ({
-          ...prev,
-          photos: [...prev.photos, dataUrl],
-        }));
-      };
-      reader.readAsDataURL(file);
-    });
-    showToast(`${files.length} photo(s) uploaded`);
+    const fileArr = Array.from(files);
+    try {
+      const compressedUrls = await Promise.all(
+        fileArr.map((f) => compressImageFile(f, 1200, 800, 0.75))
+      );
+      setNewEvent((prev) => ({
+        ...prev,
+        photos: [...prev.photos, ...compressedUrls],
+      }));
+      showToast(`${files.length} photo(s) uploaded`);
+    } catch (err) {
+      console.error("Photos upload error:", err);
+    }
     e.target.value = "";
   };
 
@@ -478,34 +490,35 @@ export default function TripDetailPage() {
     }
   };
 
-  const handleEditCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEditCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      const dataUrl = await compressImageFile(file, 1200, 800, 0.75);
       setEditEventData((prev) => ({ ...prev, coverImage: dataUrl }));
       showToast("Cover image updated");
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Edit cover upload error:", err);
+    }
     e.target.value = "";
   };
 
-  const handleEditPhotosUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEditPhotosUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const dataUrl = event.target?.result as string;
-        setEditEventData((prev) => ({
-          ...prev,
-          photos: [...prev.photos, dataUrl],
-        }));
-      };
-      reader.readAsDataURL(file);
-    });
-    showToast(`${files.length} photo(s) added`);
+    const fileArr = Array.from(files);
+    try {
+      const compressedUrls = await Promise.all(
+        fileArr.map((f) => compressImageFile(f, 1200, 800, 0.75))
+      );
+      setEditEventData((prev) => ({
+        ...prev,
+        photos: [...prev.photos, ...compressedUrls],
+      }));
+      showToast(`${files.length} photo(s) added`);
+    } catch (err) {
+      console.error("Edit photos upload error:", err);
+    }
     e.target.value = "";
   };
 
@@ -583,34 +596,52 @@ export default function TripDetailPage() {
   };
 
   // Image Management on Card: Add photo
-  const handleAddPhotoToEvent = (eventId: string, photoUrl: string) => {
+  const handleAddPhotoToEvent = async (eventId: string, photoUrl: string) => {
     if (!currentTrip || !photoUrl.trim()) return;
-    const updatedEvents = currentTrip.events.map((evt) => {
-      if (evt.id !== eventId) return evt;
-      const currentPhotos = evt.photos || [];
-      return {
-        ...evt,
-        photos: [...currentPhotos, photoUrl.trim()],
-        coverImage: evt.coverImage || photoUrl.trim(),
-      };
-    });
-    updateTripEvents(updatedEvents);
-    setCardPhotoModalEventId(null);
-    setCardPhotoUrlInput("");
-    showToast("Photo added to event");
+    try {
+      const finalPhoto = await compressDataUrl(photoUrl.trim(), 1200, 800, 0.75);
+      const updatedEvents = currentTrip.events.map((evt) => {
+        if (evt.id !== eventId) return evt;
+        const currentPhotos = evt.photos || [];
+        return {
+          ...evt,
+          photos: [...currentPhotos, finalPhoto],
+          coverImage: evt.coverImage || finalPhoto,
+        };
+      });
+      updateTripEvents(updatedEvents);
+      setCardPhotoModalEventId(null);
+      setCardPhotoUrlInput("");
+      showToast("Photo added to event");
+    } catch (err) {
+      console.error("Add photo error:", err);
+    }
   };
 
-  const handleCardPhotoFileUpload = (eventId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCardPhotoFileUpload = async (eventId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const dataUrl = ev.target?.result as string;
-        handleAddPhotoToEvent(eventId, dataUrl);
-      };
-      reader.readAsDataURL(file);
-    });
+    if (!files || files.length === 0 || !currentTrip) return;
+    const fileArr = Array.from(files);
+    try {
+      const compressedUrls = await Promise.all(
+        fileArr.map((f) => compressImageFile(f, 1200, 800, 0.75))
+      );
+      const updatedEvents = currentTrip.events.map((evt) => {
+        if (evt.id !== eventId) return evt;
+        const currentPhotos = evt.photos || [];
+        return {
+          ...evt,
+          photos: [...currentPhotos, ...compressedUrls],
+          coverImage: evt.coverImage || compressedUrls[0],
+        };
+      });
+      updateTripEvents(updatedEvents);
+      setCardPhotoModalEventId(null);
+      setCardPhotoUrlInput("");
+      showToast(`${files.length} photo(s) added to event`);
+    } catch (err) {
+      console.error("Card photo upload error:", err);
+    }
     e.target.value = "";
   };
 
@@ -667,12 +698,22 @@ export default function TripDetailPage() {
   };
 
   // Document Management Handlers
-  const handleDocFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDocFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      let dataUrl: string;
+      if (file.type.startsWith("image/")) {
+        dataUrl = await compressImageFile(file, 1400, 1000, 0.78);
+      } else {
+        dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (event) => resolve(event.target?.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
       const sizeStr = file.size > 1024 * 1024
         ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
         : `${Math.round(file.size / 1024)} KB`;
@@ -685,8 +726,10 @@ export default function TripDetailPage() {
         title: prev.title || file.name.replace(/\.[^/.]+$/, ""),
       }));
       showToast(`Selected file: ${file.name}`);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Doc file upload error:", err);
+    }
+    e.target.value = "";
   };
 
   const handleAddDocSubmit = (e: React.FormEvent) => {
@@ -1891,18 +1934,18 @@ export default function TripDetailPage() {
                       setBannerDragActive(true);
                     }}
                     onDragLeave={() => setBannerDragActive(false)}
-                    onDrop={(e) => {
+                    onDrop={async (e) => {
                       e.preventDefault();
                       setBannerDragActive(false);
                       const file = e.dataTransfer.files?.[0];
                       if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (ev) => {
-                          const dataUrl = ev.target?.result as string;
+                        try {
+                          const dataUrl = await compressImageFile(file, 1600, 1000, 0.78);
                           setBannerPreviewUrl(dataUrl);
-                          updateBannerImage(dataUrl);
-                        };
-                        reader.readAsDataURL(file);
+                          await updateBannerImage(dataUrl);
+                        } catch (err) {
+                          console.error("Banner drop error:", err);
+                        }
                       }
                     }}
                     onClick={() => bannerFileInputRef.current?.click()}
@@ -2997,19 +3040,32 @@ export default function TripDetailPage() {
                     setCardPhotoDragActive(true);
                   }}
                   onDragLeave={() => setCardPhotoDragActive(false)}
-                  onDrop={(e) => {
+                  onDrop={async (e) => {
                     e.preventDefault();
                     setCardPhotoDragActive(false);
                     const files = e.dataTransfer.files;
-                    if (!files || files.length === 0) return;
-                    Array.from(files).forEach((file) => {
-                      const reader = new FileReader();
-                      reader.onload = (ev) => {
-                        const dataUrl = ev.target?.result as string;
-                        handleAddPhotoToEvent(cardPhotoModalEventId, dataUrl);
-                      };
-                      reader.readAsDataURL(file);
-                    });
+                    if (!files || files.length === 0 || !cardPhotoModalEventId) return;
+                    const fileArr = Array.from(files);
+                    try {
+                      const compressedUrls = await Promise.all(
+                        fileArr.map((f) => compressImageFile(f, 1200, 800, 0.75))
+                      );
+                      if (!currentTrip) return;
+                      const updatedEvents = currentTrip.events.map((evt) => {
+                        if (evt.id !== cardPhotoModalEventId) return evt;
+                        const currentPhotos = evt.photos || [];
+                        return {
+                          ...evt,
+                          photos: [...currentPhotos, ...compressedUrls],
+                          coverImage: evt.coverImage || compressedUrls[0],
+                        };
+                      });
+                      updateTripEvents(updatedEvents);
+                      setCardPhotoModalEventId(null);
+                      showToast(`${files.length} photo(s) added to event`);
+                    } catch (err) {
+                      console.error("Card photo drop error:", err);
+                    }
                   }}
                   onClick={() => cardPhotoFileInputRef.current?.click()}
                   className={`w-full py-6 px-4 border-2 border-dashed rounded-[14px] flex flex-col items-center justify-center text-center cursor-pointer transition ${
