@@ -1,9 +1,10 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system/legacy';
 import { MobileTrip } from '@/data/tripsData';
 
-const STORAGE_KEY = 'travchad_mobile_imported_trips';
+const STORAGE_FILE = 'travchad_mobile_trips.json';
+const WEB_STORAGE_KEY = 'travchad_mobile_imported_trips';
 
 // Smart backend URL discovery:
 // On web: uses window.location.hostname:8123 or localhost:8123
@@ -67,7 +68,7 @@ export async function verifyAndFetchTrip(code: string): Promise<VerifyTripRespon
       trip: data.trip,
     };
   } catch (err: unknown) {
-    console.error('[Mobile API] Network error:', err);
+    console.warn('[Mobile API] Network error:', err);
     return {
       success: false,
       error: `Could not connect to travel agent backend at ${backendUrl}. Make sure your phone and computer are on the same Wi-Fi.`,
@@ -75,59 +76,70 @@ export async function verifyAndFetchTrip(code: string): Promise<VerifyTripRespon
   }
 }
 
-let inMemoryStore: Record<string, string> = {};
-
-async function getItemSafe(key: string): Promise<string | null> {
-  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
-    try {
-      return window.localStorage.getItem(key);
-    } catch {}
-  }
-  try {
-    if (AsyncStorage && typeof AsyncStorage.getItem === 'function') {
-      const val = await AsyncStorage.getItem(key);
-      if (val !== null) return val;
-    }
-  } catch {
-    // Native module null fallback
-  }
-  return inMemoryStore[key] || null;
-}
-
-async function setItemSafe(key: string, value: string): Promise<void> {
-  inMemoryStore[key] = value;
-  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
-    try {
-      window.localStorage.setItem(key, value);
-      return;
-    } catch {}
-  }
-  try {
-    if (AsyncStorage && typeof AsyncStorage.setItem === 'function') {
-      await AsyncStorage.setItem(key, value);
-    }
-  } catch {
-    // Native module null fallback
-  }
-}
+// In-memory fallback guaranteeing zero crashes or redboxes
+let inMemoryTrips: MobileTrip[] = [];
 
 export async function loadStoredMobileTrips(): Promise<MobileTrip[]> {
-  try {
-    const raw = await getItemSafe(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch (err) {
-    console.error('Failed to load stored mobile trips:', err);
+  // 1. Web LocalStorage
+  if (Platform.OS === 'web') {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = window.localStorage.getItem(WEB_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            inMemoryTrips = parsed;
+            return parsed;
+          }
+        }
+      }
+    } catch {}
+    return inMemoryTrips;
   }
-  return [];
+
+  // 2. Mobile FileSystem (native to Expo Go, never null)
+  try {
+    if (FileSystem && FileSystem.documentDirectory) {
+      const fileUri = `${FileSystem.documentDirectory}${STORAGE_FILE}`;
+      const fileInfo = await FileSystem.getInfoAsync(fileUri);
+      if (fileInfo && fileInfo.exists) {
+        const content = await FileSystem.readAsStringAsync(fileUri);
+        if (content) {
+          const parsed = JSON.parse(content);
+          if (Array.isArray(parsed)) {
+            inMemoryTrips = parsed;
+            return parsed;
+          }
+        }
+      }
+    }
+  } catch {
+    // Silent in-memory fallback
+  }
+
+  return inMemoryTrips;
 }
 
 export async function saveStoredMobileTrips(trips: MobileTrip[]): Promise<void> {
+  inMemoryTrips = trips;
+
+  // 1. Web LocalStorage
+  if (Platform.OS === 'web') {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(WEB_STORAGE_KEY, JSON.stringify(trips));
+      }
+    } catch {}
+    return;
+  }
+
+  // 2. Mobile FileSystem (native to Expo Go)
   try {
-    await setItemSafe(STORAGE_KEY, JSON.stringify(trips));
-  } catch (err) {
-    console.error('Failed to save mobile trips:', err);
+    if (FileSystem && FileSystem.documentDirectory) {
+      const fileUri = `${FileSystem.documentDirectory}${STORAGE_FILE}`;
+      await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(trips));
+    }
+  } catch {
+    // Silent in-memory fallback
   }
 }
