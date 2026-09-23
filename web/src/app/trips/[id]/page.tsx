@@ -1355,39 +1355,39 @@ export default function TripDetailPage() {
                           <span className="text-[#cbd5e1]">•</span>
                           <span>{evt.duration}</span>
                           <span className="text-[#cbd5e1]">•</span>
-                          <span className="inline-flex items-center gap-1 truncate text-[#64748b]">
-                            <svg
-                              className="w-3.5 h-3.5 text-[#2563eb] shrink-0"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                            >
-                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                              <circle cx="12" cy="10" r="3" />
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(evt.location)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            title={`Search "${evt.location}" on Google Maps`}
+                            className="inline-flex items-center gap-1.5 truncate text-[#64748b] hover:text-[#2563eb] cursor-pointer group/loc transition"
+                          >
+                            <span className="w-5 h-5 rounded-full bg-[#eff6ff] group-hover/loc:bg-[#dbeafe] text-[#2563eb] grid place-items-center shrink-0 transition shadow-xs">
+                              <svg
+                                className="w-3.5 h-3.5 text-[#2563eb] shrink-0 group-hover/loc:scale-110 transition-transform"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                <circle cx="12" cy="10" r="3" />
+                              </svg>
+                            </span>
+                            <span className="group-hover/loc:underline truncate font-medium">{evt.location}</span>
+                            <svg className="w-3 h-3 text-[#94a3b8] group-hover/loc:text-[#2563eb] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                              <polyline points="15 3 21 3 21 9" />
+                              <line x1="10" y1="14" x2="21" y2="3" />
                             </svg>
-                            {evt.location}
-                          </span>
+                          </a>
                         </div>
                       </div>
                     </div>
 
                     {/* Card Actions: Edit, Delete, Expand/Collapse */}
                     <div className="flex items-center gap-1.5 sm:gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      {/* Attach Document Button */}
-                      <button
-                        type="button"
-                        onClick={(e) => handleOpenAddDocForEvent(evt.id, e)}
-                        title="Add Document to this Event"
-                        className="w-8 h-8 rounded-[8px] grid place-items-center text-[#475569] hover:text-[#2563eb] hover:bg-[#eff6ff] border border-transparent hover:border-[#bfdbfe] transition"
-                      >
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                          <polyline points="14 2 14 8 20 8" />
-                          <line x1="12" y1="18" x2="12" y2="12" />
-                          <line x1="9" y1="15" x2="15" y2="15" />
-                        </svg>
-                      </button>
 
                       {/* Edit Event Button */}
                       <button
@@ -1439,319 +1439,137 @@ export default function TripDetailPage() {
                   {/* Expanded Content Panel */}
                   {isOpen && (
                     <div className="px-5 sm:px-6 pb-6 pt-3 border-t border-[#f1f5f9] animate-[fadeIn_0.2s_ease] space-y-6">
-                      {/* Description Section - Full Width with Quick-Edit */}
+                      {/* Description Section - Full Width (Read-only) */}
                       <div className="w-full">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2 text-[14.5px] font-bold text-[#172554]">
-                            <svg
-                              className="w-4 h-4 text-[#2563eb]"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                            >
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                              <polyline points="14 2 14 8 20 8" />
-                              <line x1="16" y1="13" x2="8" y2="13" />
-                              <line x1="16" y1="17" x2="8" y2="17" />
-                            </svg>
-                            <span>Description</span>
-                          </div>
-                          {editingDescId !== evt.id && (
-                            <button
-                              type="button"
-                              onClick={(e) => handleStartEditDesc(evt.id, evt.description, e)}
-                              className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-[#64748b] hover:text-[#2563eb] bg-[#f8fafc] hover:bg-[#eff6ff] px-2 py-0.5 rounded-[6px] transition border border-[#e2e8f0]"
-                            >
-                              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                              </svg>
-                              Edit
-                            </button>
-                          )}
+                        <div className="flex items-center gap-2 text-[14.5px] font-bold text-[#172554] mb-2">
+                          <svg
+                            className="w-4 h-4 text-[#2563eb]"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <line x1="16" y1="13" x2="8" y2="13" />
+                            <line x1="16" y1="17" x2="8" y2="17" />
+                          </svg>
+                          <span>Description</span>
                         </div>
 
-                        {editingDescId === evt.id ? (
-                          <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
-                            <RichTextEditor
-                              value={editingDescText}
-                              onChange={setEditingDescText}
-                              placeholder="Write description with font sizes, families, bold, italics, highlights, alignments, lists..."
-                              minHeight="min-h-[140px]"
-                            />
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleSaveDesc(evt.id)}
-                                className="px-4 py-2 rounded-[8px] text-[13px] font-semibold bg-[#2563eb] text-white hover:bg-[#1d4ed8] transition shadow-xs"
-                              >
-                                Save Description
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setEditingDescId(null)}
-                                className="px-3.5 py-2 rounded-[8px] text-[13px] text-[#64748b] hover:bg-[#f1f5f9] transition"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div
-                            className="text-[14px] leading-relaxed text-[#475569] w-full prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_table]:border-collapse [&_table]:w-full [&_table]:my-3 overflow-x-auto"
-                            dangerouslySetInnerHTML={{ __html: evt.description }}
-                          />
-                        )}
+                        <div
+                          className="text-[14px] leading-relaxed text-[#475569] w-full prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_table]:border-collapse [&_table]:w-full [&_table]:my-3 overflow-x-auto"
+                          dangerouslySetInnerHTML={{ __html: evt.description }}
+                        />
                       </div>
 
-                      {/* Columns Layout: Photos | Additional Notes | [Documents] | Location */}
+                      {/* Columns Layout: Photos | Additional Notes | Docs */}
                       {(() => {
                         const eventDocs = (currentTrip.documents || []).filter(
                           (d) => d.eventId === evt.id
                         );
-                        const hasDocs = eventDocs.length > 0;
+                        const allPhotos =
+                          evt.photos && evt.photos.length > 0
+                            ? evt.photos
+                            : [evt.coverImage];
 
                         return (
-                          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start pt-1">
-                            {/* Column 1: Images (Maximized) with Add & Delete capability */}
-                            <div className={hasDocs ? "lg:col-span-4" : "lg:col-span-5"}>
-                              <div className="flex items-center justify-between mb-2.5">
-                                <div className="flex items-center gap-2 text-[14.5px] font-bold text-[#172554]">
-                                  <svg
-                                    className="w-4 h-4 text-[#2563eb]"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                  >
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                    <circle cx="8.5" cy="8.5" r="1.5" />
-                                    <polyline points="21 15 16 10 5 21" />
-                                  </svg>
-                                  <span>
-                                    Photos ({((evt.photos && evt.photos.length > 0) ? evt.photos : [evt.coverImage]).length})
-                                  </span>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setCardPhotoModalEventId(evt.id);
-                                  }}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11.5px] font-semibold text-[#2563eb] bg-[#eff6ff] hover:bg-[#dbeafe] rounded-[7px] transition"
+                          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start pt-1">
+                            {/* Column 1: Photos (Occupies 5 columns) */}
+                            <div className="lg:col-span-5">
+                              <div className="flex items-center gap-2 text-[14.5px] font-bold text-[#172554] mb-2.5">
+                                <svg
+                                  className="w-4 h-4 text-[#2563eb]"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
                                 >
-                                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <line x1="12" y1="5" x2="12" y2="19" />
-                                    <line x1="5" y1="12" x2="19" y2="12" />
-                                  </svg>
-                                  Add Photo
-                                </button>
+                                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                  <circle cx="8.5" cy="8.5" r="1.5" />
+                                  <polyline points="21 15 16 10 5 21" />
+                                </svg>
+                                <span>Photos ({allPhotos.length})</span>
                               </div>
 
-                              <div className="grid grid-cols-3 sm:grid-cols-3 gap-2.5">
-                                {((evt.photos && evt.photos.length > 0)
-                                  ? evt.photos
-                                  : [evt.coverImage]
-                                ).map((photo, pIdx) => (
+                              <div className="grid grid-cols-3 gap-2.5">
+                                {allPhotos.map((photo, pIdx) => (
                                   <div
                                     key={pIdx}
-                                    className="relative aspect-video rounded-[10px] overflow-hidden group/img shadow-sm border border-[#e6ecf4] bg-slate-100"
+                                    onClick={() => window.open(photo, "_blank")}
+                                    className="relative aspect-video rounded-[10px] overflow-hidden group/img shadow-sm border border-[#e6ecf4] bg-slate-100 cursor-pointer"
+                                    title="Click to view full photo"
                                   >
                                     <img
                                       src={photo}
                                       alt={`Photo ${pIdx + 1}`}
                                       className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-300"
                                     />
-                                    {/* Overlay with View and Delete actions */}
-                                    <div className="absolute inset-0 bg-slate-950/50 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                      <button
-                                        type="button"
-                                        title="View full image"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          window.open(photo, "_blank");
-                                        }}
-                                        className="w-7 h-7 rounded-full bg-white/95 text-slate-700 hover:text-[#2563eb] grid place-items-center shadow hover:scale-110 transition"
-                                      >
+                                    <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                                      <span className="w-7 h-7 rounded-full bg-white/95 text-slate-700 grid place-items-center shadow">
                                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                                           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                                           <circle cx="12" cy="12" r="3" />
                                         </svg>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        title="Delete photo"
-                                        onClick={(e) => handleDeletePhoto(evt.id, pIdx, e)}
-                                        className="w-7 h-7 rounded-full bg-red-600 text-white hover:bg-red-700 grid place-items-center shadow hover:scale-110 transition"
-                                      >
-                                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                                          <polyline points="3 6 5 6 21 6" />
-                                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                        </svg>
-                                      </button>
+                                      </span>
                                     </div>
                                   </div>
                                 ))}
-
-                                {/* + Add Photo Tile */}
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setCardPhotoModalEventId(evt.id);
-                                  }}
-                                  className="aspect-video rounded-[10px] border-2 border-dashed border-[#cbd5e1] hover:border-[#2563eb] bg-[#f8fafc] hover:bg-[#eff6ff] flex flex-col items-center justify-center gap-1 text-[#64748b] hover:text-[#2563eb] transition group/slot"
-                                >
-                                  <svg className="w-4 h-4 group-hover/slot:scale-110 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <line x1="12" y1="5" x2="12" y2="19" />
-                                    <line x1="5" y1="12" x2="19" y2="12" />
-                                  </svg>
-                                  <span className="text-[11px] font-semibold">+ Add</span>
-                                </button>
                               </div>
                             </div>
 
-                            {/* Column 2: Additional Notes */}
-                            <div className={hasDocs ? "lg:col-span-3" : "lg:col-span-4"}>
-                              <div className="flex items-center justify-between mb-2.5">
-                                <div className="flex items-center gap-2 text-[14.5px] font-bold text-[#172554]">
-                                  <svg
-                                    className="w-4 h-4 text-[#2563eb]"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                  >
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                  </svg>
-                                  <span>Additional Notes</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  {!hasDocs && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => handleOpenAddDocForEvent(evt.id, e)}
-                                      className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-[#64748b] hover:text-[#2563eb] bg-[#f8fafc] hover:bg-[#eff6ff] rounded-[7px] border border-[#e2e8f0] transition"
-                                      title="Add a document to this card"
-                                    >
-                                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                        <polyline points="14 2 14 8 20 8" />
-                                      </svg>
-                                      + Doc
-                                    </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setInlineNoteOpen((prev) => ({ ...prev, [evt.id]: !prev[evt.id] }));
-                                    }}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 text-[11.5px] font-semibold text-[#2563eb] bg-[#eff6ff] hover:bg-[#dbeafe] rounded-[7px] transition"
-                                  >
-                                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                      <line x1="12" y1="5" x2="12" y2="19" />
-                                      <line x1="5" y1="12" x2="19" y2="12" />
-                                    </svg>
-                                    Add Note
-                                  </button>
-                                </div>
+                            {/* Column 2: Additional Notes (Occupies 4 columns) */}
+                            <div className="lg:col-span-4">
+                              <div className="flex items-center gap-2 text-[14.5px] font-bold text-[#172554] mb-2.5">
+                                <svg
+                                  className="w-4 h-4 text-[#2563eb]"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                </svg>
+                                <span>Additional Notes</span>
                               </div>
 
-                              <ul className="space-y-1.5 text-[13.5px] text-[#475569]">
-                                {evt.notes.map((note, nIdx) => (
-                                  <li
-                                    key={nIdx}
-                                    className="flex items-start justify-between gap-2 group/note py-0.5 rounded px-1 hover:bg-[#f8fafc]"
-                                  >
-                                    <div className="flex items-start gap-2 min-w-0">
+                              {evt.notes && evt.notes.length > 0 ? (
+                                <ul className="space-y-1.5 text-[13.5px] text-[#475569]">
+                                  {evt.notes.map((note, nIdx) => (
+                                    <li
+                                      key={nIdx}
+                                      className="flex items-start gap-2 py-0.5 rounded px-1"
+                                    >
                                       <span className="w-1.5 h-1.5 rounded-full bg-[#64748b] mt-2 shrink-0" />
                                       <span className="break-words">{note}</span>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      title="Delete note"
-                                      onClick={(e) => handleDeleteNote(evt.id, nIdx, e)}
-                                      className="opacity-0 group-hover/note:opacity-100 text-[#94a3b8] hover:text-red-600 transition p-0.5 rounded shrink-0"
-                                    >
-                                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <line x1="18" y1="6" x2="6" y2="18" />
-                                        <line x1="6" y1="6" x2="18" y2="18" />
-                                      </svg>
-                                    </button>
-                                  </li>
-                                ))}
-                              </ul>
-
-                              {/* Inline Add Note Input */}
-                              {inlineNoteOpen[evt.id] && (
-                                <div className="mt-2.5 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                  <input
-                                    type="text"
-                                    placeholder="Type a note & press Enter..."
-                                    value={inlineNoteInputs[evt.id] || ""}
-                                    onChange={(e) => setInlineNoteInputs((prev) => ({ ...prev, [evt.id]: e.target.value }))}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        handleAddInlineNote(evt.id);
-                                      }
-                                    }}
-                                    className="flex-1 p-1.5 px-2.5 text-[12.5px] border border-[#cbd5e1] rounded-[7px] outline-none focus:border-[#2563eb] bg-white"
-                                    autoFocus
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => handleAddInlineNote(evt.id)}
-                                    className="px-3 py-1.5 text-[12px] font-semibold bg-[#2563eb] text-white rounded-[7px] hover:bg-[#1d4ed8] transition"
-                                  >
-                                    Save
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setInlineNoteOpen((prev) => ({ ...prev, [evt.id]: false }))}
-                                    className="px-2.5 py-1.5 text-[12px] text-[#64748b] hover:bg-[#f1f5f9] rounded-[7px] transition"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="text-[12.5px] text-[#94a3b8] italic">No additional notes.</p>
                               )}
                             </div>
 
-                            {/* Column 3: Documents Section (Shown when documents are assigned) */}
-                            {hasDocs && (
-                              <div className="lg:col-span-3">
-                                <div className="flex items-center justify-between mb-2.5">
-                                  <div className="flex items-center gap-2 text-[14.5px] font-bold text-[#172554]">
-                                    <svg
-                                      className="w-4 h-4 text-[#2563eb]"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="2"
-                                    >
-                                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                      <polyline points="14 2 14 8 20 8" />
-                                      <line x1="16" y1="13" x2="8" y2="13" />
-                                      <line x1="16" y1="17" x2="8" y2="17" />
-                                    </svg>
-                                    <span>Documents ({eventDocs.length})</span>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => handleOpenAddDocForEvent(evt.id, e)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 text-[11.5px] font-semibold text-[#2563eb] bg-[#eff6ff] hover:bg-[#dbeafe] rounded-[7px] transition"
-                                  >
-                                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                      <line x1="12" y1="5" x2="12" y2="19" />
-                                      <line x1="5" y1="12" x2="19" y2="12" />
-                                    </svg>
-                                    Add Doc
-                                  </button>
-                                </div>
+                            {/* Column 3: Documents (Occupies 3 columns) */}
+                            <div className="lg:col-span-3">
+                              <div className="flex items-center gap-2 text-[14.5px] font-bold text-[#172554] mb-2.5">
+                                <svg
+                                  className="w-4 h-4 text-[#2563eb]"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                  <polyline points="14 2 14 8 20 8" />
+                                  <line x1="16" y1="13" x2="8" y2="13" />
+                                  <line x1="16" y1="17" x2="8" y2="17" />
+                                </svg>
+                                <span>Documents ({eventDocs.length})</span>
+                              </div>
 
+                              {eventDocs.length > 0 ? (
                                 <div className="space-y-2">
                                   {eventDocs.map((doc) => {
                                     let docIconBg = "bg-[#e8f0fe] text-[#2563eb]";
@@ -1788,119 +1606,31 @@ export default function TripDetailPage() {
                                           </div>
                                         </div>
 
-                                        <div className="flex items-center gap-0.5 shrink-0">
-                                          {doc.fileUrl && (
-                                            <button
-                                              type="button"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                window.open(doc.fileUrl, "_blank");
-                                              }}
-                                              title="View document"
-                                              className="w-6 h-6 rounded-[5px] grid place-items-center text-[#64748b] hover:text-[#2563eb] hover:bg-white transition"
-                                            >
-                                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                                <circle cx="12" cy="12" r="3" />
-                                              </svg>
-                                            </button>
-                                          )}
+                                        {doc.fileUrl && (
                                           <button
                                             type="button"
-                                            onClick={(e) => handleUnassignDoc(doc.id, e)}
-                                            title="Unassign document from card"
-                                            className="w-6 h-6 rounded-[5px] grid place-items-center text-[#94a3b8] hover:text-red-600 hover:bg-white transition"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              window.open(doc.fileUrl, "_blank");
+                                            }}
+                                            title="View document"
+                                            className="w-6 h-6 rounded-[5px] grid place-items-center text-[#64748b] hover:text-[#2563eb] hover:bg-white transition shrink-0"
                                           >
                                             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                              <line x1="18" y1="6" x2="6" y2="18" />
-                                              <line x1="6" y1="6" x2="18" y2="18" />
+                                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                              <circle cx="12" cy="12" r="3" />
                                             </svg>
                                           </button>
-                                        </div>
+                                        )}
                                       </div>
                                     );
                                   })}
-
-                                  <button
-                                    type="button"
-                                    onClick={(e) => handleOpenAddDocForEvent(evt.id, e)}
-                                    className="w-full py-1.5 px-2.5 border border-dashed border-[#cbd5e1] hover:border-[#2563eb] rounded-[9px] flex items-center justify-center gap-1.5 text-[11px] font-semibold text-[#64748b] hover:text-[#2563eb] bg-[#f8fafc] hover:bg-[#eff6ff] transition"
-                                  >
-                                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                      <line x1="12" y1="5" x2="12" y2="19" />
-                                      <line x1="5" y1="12" x2="19" y2="12" />
-                                    </svg>
-                                    + Attach another document
-                                  </button>
                                 </div>
-                              </div>
-                            )}
-
-                            {/* Column 4: Location Card (Compressed even smaller when documents are present) */}
-                            <div className={hasDocs ? "lg:col-span-2" : "lg:col-span-3"}>
-                              <div className="flex items-center gap-1.5 text-[14px] font-bold text-[#172554] mb-2">
-                                <svg
-                                  className="w-3.5 h-3.5 text-[#2563eb]"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                >
-                                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                                  <circle cx="12" cy="10" r="3" />
-                                </svg>
-                                <span className="truncate">Location</span>
-                              </div>
-
-                              <div className={`relative w-full ${hasDocs ? "h-[80px]" : "h-[95px]"} rounded-[12px] overflow-hidden border border-[#dce5f1] bg-[#eef4fb] shadow-sm`}>
-                                <svg
-                                  className="absolute inset-0 w-full h-full text-[#dbe7f5]"
-                                  preserveAspectRatio="none"
-                                  viewBox="0 0 400 150"
-                                  fill="none"
-                                >
-                                  <rect width="400" height="150" fill="#f4f8fc" />
-                                  <path
-                                    d="M-20,40 Q100,10 200,80 T420,110"
-                                    stroke="#e1ebf6"
-                                    strokeWidth="18"
-                                  />
-                                  <path
-                                    d="M30,-20 Q120,60 180,160"
-                                    stroke="#d4e3f3"
-                                    strokeWidth="12"
-                                  />
-                                  <path
-                                    d="M120,-10 Q220,110 380,50"
-                                    stroke="#dcfce7"
-                                    strokeWidth="14"
-                                  />
-                                  <circle cx="160" cy="70" r="6" fill="#3b82f6" opacity="0.2" />
-                                </svg>
-
-                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 bg-white/95 backdrop-blur-sm px-1.5 py-0.5 rounded-full shadow-[0_2px_8px_rgba(15,23,42,0.12)] border border-[#e2e8f0] max-w-[94%]">
-                                  <svg
-                                    className="w-2.5 h-2.5 text-red-500 fill-red-500 shrink-0"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                                  </svg>
-                                  <span className="text-[10.5px] font-semibold text-[#1e293b] truncate">
-                                    {evt.location}
-                                  </span>
+                              ) : (
+                                <div className="p-3.5 rounded-[12px] border border-dashed border-[#dce5f1] bg-[#f8fafc] text-center">
+                                  <p className="text-[12px] text-[#94a3b8]">No documents attached</p>
                                 </div>
-
-                                <a
-                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                                    evt.location
-                                  )}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="absolute bottom-1 right-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[5px] bg-white text-[#1e293b] text-[9.5px] font-semibold shadow-sm border border-[#e2e8f0] hover:bg-[#f8fafc] transition"
-                                >
-                                  Maps
-                                </a>
-                              </div>
+                              )}
                             </div>
                           </div>
                         );
@@ -3302,180 +3032,7 @@ export default function TripDetailPage() {
         </div>
       )}
 
-      {/* ================= ADD PHOTO TO CARD MODAL ================= */}
-      {cardPhotoModalEventId && (
-        <div
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm grid place-items-center z-50 p-4"
-          onClick={() => {
-            setCardPhotoModalEventId(null);
-            setCardPhotoUrlInput("");
-          }}
-        >
-          <div
-            className="bg-white rounded-[20px] w-full max-w-[480px] shadow-[0_24px_64px_rgba(2,8,23,0.35)] p-6 animate-[pop_0.2s_ease]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between pb-4 border-b border-[#eef2f7]">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-[8px] bg-[#eff6ff] text-[#2563eb] grid place-items-center">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <polyline points="21 15 16 10 5 21" />
-                  </svg>
-                </div>
-                <h3 className="text-[17.5px] font-bold text-[#172554]">
-                  Add Photo to Event
-                </h3>
-              </div>
-              <button
-                onClick={() => {
-                  setCardPhotoModalEventId(null);
-                  setCardPhotoUrlInput("");
-                }}
-                className="w-8 h-8 rounded-[8px] grid place-items-center text-[#64748b] hover:bg-[#f1f5f9] transition"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
 
-            <div className="mt-4 space-y-4">
-              <div>
-                <label className="block text-[13px] font-semibold text-[#334155] mb-1.5">
-                  Option 1: Paste Image URL Link
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    placeholder="https://images.unsplash.com/..."
-                    value={cardPhotoUrlInput}
-                    onChange={(e) => {
-                      setCardPhotoUrlInput(e.target.value);
-                      if (e.target.value.trim().startsWith("http")) {
-                        setCardPhotoPreviewUrl(e.target.value.trim());
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        if (cardPhotoUrlInput.trim()) {
-                          handleAddPhotoToEvent(cardPhotoModalEventId, cardPhotoUrlInput.trim());
-                          setCardPhotoPreviewUrl("");
-                        }
-                      }
-                    }}
-                    className="flex-1 p-2.5 border border-[#dfe6ee] rounded-[9px] text-[13.5px] text-[#1e293b] outline-none focus:border-[#2563eb]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (cardPhotoUrlInput.trim()) {
-                        handleAddPhotoToEvent(cardPhotoModalEventId, cardPhotoUrlInput.trim());
-                        setCardPhotoPreviewUrl("");
-                      }
-                    }}
-                    disabled={!cardPhotoUrlInput.trim()}
-                    className="px-4 py-2.5 rounded-[9px] bg-[#2563eb] text-white text-[13.5px] font-semibold hover:bg-[#1d4ed8] disabled:opacity-50 disabled:cursor-not-allowed transition"
-                  >
-                    Add URL
-                  </button>
-                </div>
-
-                {cardPhotoPreviewUrl && (
-                  <div className="mt-2.5 relative aspect-video rounded-[10px] overflow-hidden border border-[#cbd5e1] bg-slate-100 max-h-[140px]">
-                    <img
-                      src={cardPhotoPreviewUrl}
-                      alt="URL Preview"
-                      className="w-full h-full object-cover"
-                      onError={() => setCardPhotoPreviewUrl("")}
-                    />
-                    <div className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full bg-black/60 text-white text-[10.5px] font-semibold">
-                      Preview
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="relative flex py-1 items-center">
-                <div className="flex-grow border-t border-gray-200"></div>
-                <span className="flex-shrink mx-3 text-gray-400 text-xs uppercase font-medium">Or</span>
-                <div className="flex-grow border-t border-gray-200"></div>
-              </div>
-
-              <div>
-                <label className="block text-[13px] font-semibold text-[#334155] mb-1.5">
-                  Option 2: Upload from Local Device
-                </label>
-                <div
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setCardPhotoDragActive(true);
-                  }}
-                  onDragLeave={() => setCardPhotoDragActive(false)}
-                  onDrop={async (e) => {
-                    e.preventDefault();
-                    setCardPhotoDragActive(false);
-                    const files = e.dataTransfer.files;
-                    if (!files || files.length === 0 || !cardPhotoModalEventId) return;
-                    const fileArr = Array.from(files);
-                    try {
-                      const compressedUrls = await Promise.all(
-                        fileArr.map((f) => compressImageFile(f, 1200, 800, 0.75))
-                      );
-                      if (!currentTrip) return;
-                      const updatedEvents = currentTrip.events.map((evt) => {
-                        if (evt.id !== cardPhotoModalEventId) return evt;
-                        const currentPhotos = evt.photos || [];
-                        return {
-                          ...evt,
-                          photos: [...currentPhotos, ...compressedUrls],
-                          coverImage: evt.coverImage || compressedUrls[0],
-                        };
-                      });
-                      updateTripEvents(updatedEvents);
-                      setCardPhotoModalEventId(null);
-                      showToast(`${files.length} photo(s) added to event`);
-                    } catch (err) {
-                      console.error("Card photo drop error:", err);
-                    }
-                  }}
-                  onClick={() => cardPhotoFileInputRef.current?.click()}
-                  className={`w-full py-6 px-4 border-2 border-dashed rounded-[14px] flex flex-col items-center justify-center text-center cursor-pointer transition ${
-                    cardPhotoDragActive
-                      ? "border-[#2563eb] bg-[#eff6ff]"
-                      : "border-[#cbd5e1] bg-[#f8fafc] hover:border-[#2563eb] hover:bg-[#f0f7ff]"
-                  }`}
-                >
-                  <div className="w-10 h-10 rounded-full bg-[#eff6ff] text-[#2563eb] grid place-items-center mb-2">
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="17 8 12 3 7 8" />
-                      <line x1="12" y1="3" x2="12" y2="15" />
-                    </svg>
-                  </div>
-                  <span className="text-[13.5px] font-bold text-[#1e293b]">
-                    Click to browse or drop photos here
-                  </span>
-                  <span className="text-[11.5px] text-[#64748b] mt-0.5">
-                    Supports multiple JPG, PNG, WEBP files
-                  </span>
-                </div>
-                <input
-                  type="file"
-                  ref={cardPhotoFileInputRef}
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => handleCardPhotoFileUpload(cardPhotoModalEventId, e)}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ================= DELETE EVENT CONFIRMATION MODAL ================= */}
       {deleteEventConfirmId && (
