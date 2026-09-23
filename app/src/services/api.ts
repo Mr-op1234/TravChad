@@ -75,9 +75,45 @@ export async function verifyAndFetchTrip(code: string): Promise<VerifyTripRespon
   }
 }
 
+let inMemoryStore: Record<string, string> = {};
+
+async function getItemSafe(key: string): Promise<string | null> {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {}
+  }
+  try {
+    if (AsyncStorage && typeof AsyncStorage.getItem === 'function') {
+      const val = await AsyncStorage.getItem(key);
+      if (val !== null) return val;
+    }
+  } catch {
+    // Native module null fallback
+  }
+  return inMemoryStore[key] || null;
+}
+
+async function setItemSafe(key: string, value: string): Promise<void> {
+  inMemoryStore[key] = value;
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem(key, value);
+      return;
+    } catch {}
+  }
+  try {
+    if (AsyncStorage && typeof AsyncStorage.setItem === 'function') {
+      await AsyncStorage.setItem(key, value);
+    }
+  } catch {
+    // Native module null fallback
+  }
+}
+
 export async function loadStoredMobileTrips(): Promise<MobileTrip[]> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    const raw = await getItemSafe(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed;
@@ -90,7 +126,7 @@ export async function loadStoredMobileTrips(): Promise<MobileTrip[]> {
 
 export async function saveStoredMobileTrips(trips: MobileTrip[]): Promise<void> {
   try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(trips));
+    await setItemSafe(STORAGE_KEY, JSON.stringify(trips));
   } catch (err) {
     console.error('Failed to save mobile trips:', err);
   }
